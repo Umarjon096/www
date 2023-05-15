@@ -1,0 +1,299 @@
+<script type="text/x-template" id="users-settings-template">
+<div class="pt-4 pl-2 pr-4 pb-4">
+  <h1 class="mb-4 pb-4">Пользователи</h1>
+  <div
+    class="top-loader"
+    v-if="loading"
+  >
+    <div>Идёт загрузка...</div>
+    <div class="lds-facebook">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-6">
+      <div class="row">
+        <div class="col-6">
+          <div class="form-group">
+            <label class="col-form-label">Имя пользователя</label>
+            <input
+              type="text"
+              class="form-control"
+              v-model.trim="username"
+              @input="showSubmit"
+            >
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="form-group">
+            <label class="col-form-label">Адрес электронной почты</label>
+            <input
+              type="text"
+              class="form-control"
+              v-model.trim="email"
+              @input="showSubmit"
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-6">
+      <div class="row">
+        <div class="col-6">
+          <div class="form-group ">
+            <label class="col-form-label">Пароль</label>
+            <div class="inner-addon right-addon">
+              <i
+                class="icon"
+                @mouseover="show1 = true;"
+                @mouseleave="show1 = false;"
+              >
+                {% include 'svg/eye.svg' %}
+              </i>
+              <input
+                :type="show1 ? 'text' : 'password'"
+                class="form-control"
+                v-model.trim="password1"
+                @input="showSubmit"
+              >
+            </div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="form-group">
+            <label class="col-form-label">Подтверждение пароля</label>
+            <div class="inner-addon right-addon">
+              <i
+                class="icon"
+                @mouseover="show2 = true;"
+                @mouseleave="show2 = false;"
+              >
+                {% include 'svg/eye.svg' %}
+              </i>
+              <input
+                :type="show2 ? 'text' : 'password'"
+                class="form-control"
+                v-model.trim="password2"
+                @input="showSubmit"
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div
+    class="row mb-3"
+    v-show="password1 != password2"
+  >
+    <span class="col-6">Пароли не совпадают!</span>
+  </div>
+  <div class="row">
+    <div class="col-6">
+      <div class="form-group">
+        <label class="col-form-label">ФИО сотрудника</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="name"
+          @input="showSubmit"
+        >
+      </div>
+    </div>
+  </div>
+  <div class="form-group">
+    <a
+      href="#"
+      class="btn btn-primary btn-lg btn--fixed mr-2"
+      v-show="ready"
+      @click="createUser"
+    >Добавить</a>
+  </div>
+  <h3 class="pb-3">Зарегистрированные пользователи</h3>
+  <div
+    class="row d-flex align-items-center mb-3"
+    v-for="user in users"
+  >
+    <div class="col-2">
+      [[user.username]]
+    </div>
+    <div class="col-2">
+      [[user.email]]
+    </div>
+    <div class="col-3">
+      [[user.name]]
+    </div>
+    <div class="col-5">
+      <div class="row">
+        <div class="col-8">
+          <div class="form-group mb-0">
+            <div class="inner-addon right-addon">
+              <i
+                class="icon"
+                @mouseover="user.show = true;"
+                @mouseleave="user.show = false;"
+              >
+                {% include 'svg/eye.svg' %}
+              </i>
+              <input
+                :type="user.show ? 'text' : 'password'"
+                class="form-control"
+                v-model.trim="user.password"
+              >
+            </div>
+          </div>
+        </div>
+        <div class="col-2">
+          <div class="form-group mb-0">
+            <a
+              href="#"
+              class="btn btn-primary btn-lg"
+              v-if="user.password.length > 0"
+              @click="changePassword(user)"
+            >Сохранить</a>
+            <a
+              href="#"
+              class="btn btn-outline-danger btn-lg"
+              v-else
+              @click="deleteUser(user)"
+            >Удалить</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</script>
+
+<script>
+const Users = Vue.extend({
+  template: '#users-settings-template',
+  delimiters: ['[[', ']]'],
+
+  data() {
+    return {
+      username: '',
+      email: '',
+      password1: '',
+      password2: '',
+      show1: false,
+      show2: false,
+      name: '',
+      users: [],
+      ready: false,
+      loading: true
+    }
+  },
+
+  methods: {
+    clearFields: function() {
+      this.username = '';
+      this.email = '';
+      this.password1 = '';
+      this.password2 = '';
+      this.name = '';
+    },
+
+    validateFields: function() {
+      return this.username.length > 0
+        && this.password1.length > 0
+        && this.password1 === this.password2;
+    },
+
+    showSubmit: function() {
+      this.ready = this.validateFields();
+    },
+
+    createUser: function() {
+      this.ready = false;
+
+      axios.post(
+        'user/',
+        {
+          email: this.email,
+          name: this.name,
+          password: this.password1,
+          username: this.username
+        }
+      ).then(response => {
+        messageSuccess('Пользователь успешно добавлен');
+        this.pullData();
+      }).catch(error => handleError(
+        error,
+        'Не удалось создать пользователя',
+        (() => {
+            if (error.response.data.includes(
+            'UNIQUE constraint failed: auth_user.username'
+          )) {
+            messageError('Пользователь с таким именем уже существует');
+          }
+        })
+      ));
+    },
+
+    pullData: function() {
+      this.clearFields();
+
+      axios.get(
+        'user/'
+      ).then(response => {
+        this.users = response.data;
+        this.users.forEach(user => {
+          this.$set(user, 'changed', false);
+          this.$set(user, 'password', '');
+          this.$set(user, 'show', false);
+        });
+      }).catch(error => handleError(
+        error,
+        'Ошибка! В случае повторения обратитесь в техподдержку.'
+      )).then(() => {
+        this.loading = false;
+      });
+    },
+
+    changePassword: function(user) {
+      user.changed = true;
+    },
+
+    deleteUser: function(user) {
+      if (!confirm('Вы уверены, что хотите удалить данного пользователя?')) {
+        return;
+      }
+
+      axios.delete(
+        `user/${user.id}`
+      ).then(response => {
+        messageSuccess('Пользователь успешно удалён');
+        this.pullData();
+      }).catch(error => handleError(
+        error,
+        'Не удалось удалить пользователя'
+      ));
+    },
+
+    changePassword: function(user) {
+      axios.put(
+        `user/${user.id}`,
+        {
+          password: user.password
+        }
+      ).then(response => {
+        messageSuccess('Пароль успешно изменён');
+        user.password = '';
+      }).catch(error => handleError(
+        error,
+        'Не удалось изменить пароль'
+      ));
+    }
+  },
+
+  mounted: function() {
+    this.pullData();
+  }
+});
+new Users().$mount('#users');
+</script>

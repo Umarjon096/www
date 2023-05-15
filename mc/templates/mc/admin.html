@@ -1,0 +1,113 @@
+{% extends "mc/base.html" %}
+{% load staticfiles %}
+
+{% block title %}Настройки{% endblock %}
+
+{% block extra-top %}
+<!-- development version, includes helpful console warnings -->
+<!--<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>-->
+<script src="{% static 'mc/js/lib/vue.min.js' %}"></script>
+<script src="{% static 'mc/js/lib/axios.min.js' %}"></script>
+<script src="{% static 'mc/js/lib/v-clipboard.js' %}"></script>
+{% endblock %}
+
+{% block active-admin %}active{% endblock %}
+
+{% block content %}
+<main id="app">
+  <div class="row align-items-stretch h-100">
+    <div class="col-2">
+      <div class="nav nav--vertical flex-column nav-tabs" role="tablist" aria-orientation="vertical">
+        <div class="nav-title">Настройки</div>
+        <a class="nav-link active" data-toggle="tab" href="#tab-common" role="tab">Общие</a>
+        <a class="nav-link" data-toggle="tab" href="#tab-network" role="tab">Конфигурация сети</a>
+        <a class="nav-link" data-toggle="tab" href="#tab-datetime" role="tab">Дата и время</a>
+        <a class="nav-link" data-toggle="tab" href="#tab-devices" role="tab">Устройства</a>
+        <a class="nav-link" data-toggle="tab" href="#tab-sync" role="tab">Синхронизация</a>
+        <a class="nav-link" data-toggle="tab" href="#tab-schedule" role="tab">Режим работы</a>
+        <a class="nav-link" data-toggle="tab" href="#tab-users" role="tab">Пользователи</a>
+        <a class="nav-link" data-toggle="tab" href="#tab-license" role="tab">Лицензии</a>
+        {% if bt_on %}
+          <!--a class="nav-link" data-toggle="tab" href="#tab-bluetooth" role="tab">Bluetooth</a-->
+        {% endif %}
+        <a class="nav-link" data-toggle="tab" href="#tab-diag" role="tab">Диагностика</a>
+        <a class="nav-link" data-toggle="tab" href="#tab-radio" role="tab">Настройки аудиостриминга</a>
+        <!--a class="nav-link" data-toggle="tab" href="#tab-video" role="tab">Настройки видеостриминга</a-->
+        <a class="nav-link" data-toggle="tab" href="#tab-about" role="tab">Об устройстве</a>
+      </div>
+    </div>
+    <div class="col-10" id="settings-scroll">
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab-common" role="tabpanel">
+          <div id="common"></div>
+        </div>
+        <div class="tab-pane fade" id="tab-network" role="tabpanel">
+          <div id="network"></div>
+        </div>
+        <div class="tab-pane fade" id="tab-datetime" role="tabpanel">
+          <div id="datetime"></div>
+        </div>
+        <div class="tab-pane fade" id="tab-devices" role="tabpanel">
+          <div id="devices"></div>
+        </div>
+        <div class="tab-pane fade" id="tab-sync" role="tabpanel">
+          <div id="sync"></div>
+        </div>
+        <div class="tab-pane fade" id="tab-schedule" role="tabpanel">
+          <div id="schedule"></div>
+        </div>
+        <div class="tab-pane fade" id="tab-users" role="tabpanel">
+          <div id="users"></div>
+        </div>
+        <div class="tab-pane fade" id="tab-license" role="tabpanel">
+          <div id="license"></div>
+        </div>
+        {% if bt_on %}
+          <div class="tab-pane fade" id="tab-bluetooth" role="tabpanel">
+            <div id="bluetooth"></div>
+          </div>
+        {% endif %}
+        <div class="tab-pane fade" id="tab-diag" role="tabpanel">
+          <div id="diag"></div>
+        </div>
+        <div class="tab-pane fade" id="tab-radio" role="tabpanel">
+          <div id="radio"></div>
+        </div>
+        <div class="tab-pane fade" id="tab-video" role="tabpanel">
+          <div id="video"></div>
+        </div>
+        <div class="tab-pane fade" id="tab-about" role="tabpanel">
+          <div id="about"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block extra-bottom %}
+{% include "mc/admin/common.html" %}
+{% include "mc/admin/network.html" %}
+{% include "mc/admin/datetime.html" %}
+{% include "mc/admin/device_player.html" %}
+{% include "mc/admin/device_display.html" %}
+{% include "mc/admin/device_videowall.html" %}
+{% include "mc/admin/devices_device.html" %}
+{% include "mc/admin/devices.html" %}
+{% include "mc/admin/sync.html" %}
+{% include "mc/admin/schedule.html" %}
+{% include "mc/admin/users.html" %}
+{% include "mc/admin/license.html" %}
+{% if bt_on %}
+  {% include "mc/admin/bluetooth.html" %}
+{% endif %}
+{% include "mc/admin/diag.html" %}
+{% include "mc/admin/radio.html" %}
+{% include "mc/admin/video.html" %}
+{% include "mc/admin/about.html" %}
+<script>
+if (!checkArrows() || !typeof Object['__defineSetter__'] === 'function') {
+  replaceWithWarning('settings-scroll');
+}
+</script>
+{% endblock %}

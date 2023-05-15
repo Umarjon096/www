@@ -1,0 +1,130 @@
+<script type="text/x-template" id="devices-settings-template">
+<div class="pt-4 pl-2 pr-4 pb-4">
+  <h1 class="mb-4 pb-4">Устройства</h1>
+  <div
+    class="top-loader"
+    v-if="loading"
+  >
+    <div>Идёт загрузка...</div>
+    <div class="lds-facebook">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+  <device
+    v-for="device in devices"
+    :key="device.id"
+    :device="device"
+    :modal="videowallModal"
+    @delete="deleteDevice"
+    @save="saveDevice"
+    @update="pullData"
+  ></device>
+  <div class="button-add">
+    <a
+      href="#"
+      class="btn btn-primary btn-lg btn--fixed mb-3"
+      @click="addDevice"
+    >Добавить устройство</a>
+  </div>
+</div>
+</script>
+
+<script>
+const DeviceList = Vue.extend({
+  template: '#devices-settings-template',
+  delimiters: ['[[', ']]'],
+  components: {
+    device: Device
+  },
+
+  data() {
+    return {
+      devices: [],
+      videowallModal: undefined,
+      loading: true
+    }
+  },
+
+  methods: {
+    pullData: function() {
+      axios.get('host/').then(hosts => {
+        const devices = hosts.data;
+        devices.forEach(host => {
+          host.monitors = [];
+        });
+
+        axios.get('monitor/').then(monitors => {
+          for (const monitor of monitors.data) {
+            for (const device of devices) {
+              if (monitor.host_id == device.id) {
+                device.monitors.push(monitor);
+                break;
+              }
+            }
+          }
+          this.devices = devices;
+        }).catch(error => handleError(
+          error,
+          'Ошибка! В случае повторения обратитесь в техподдержку.'
+        ));
+      }).catch(error => handleError(
+        error,
+        'Ошибка! В случае повторения обратитесь в техподдержку.'
+      )).then(() => {
+        setTimeout(() => {
+          this.loading = false;
+        }, 5000);
+      });
+    },
+
+    processDevice: function(id, func) {
+      for (let i = 0; i < this.devices.length; i++) {
+        if (this.devices[i].id == id) {
+          func(this.devices[i], i);
+          return;
+        }
+      }
+    },
+
+    deleteDevice: function(deviceId) {
+      this.processDevice(deviceId, (_, id) => {
+        this.devices.splice(id, 1);
+      });
+    },
+
+    saveDevice: function(newValues) {
+      this.processDevice(newValues.oldId, device => {
+        device.id = newValues.newId;
+        device.ip = newValues.ip;
+        device.is_nuc = newValues.is_nuc;
+        device.name = newValues.name;
+      });
+    },
+
+    addDevice: function() {
+      const newDevice = {
+        // Делаем отрицательный id, чтобы отличить от сохраненных
+        // Вычитаем единицу, чтобы всегда было <0
+        id: -this.devices.length - 1,
+        ip: '',
+        is_nuc: false,
+        name: '',
+        sync_group: 0,
+        vw_mon_id: null,
+        vw_taken: false,
+        monitors: []
+      };
+      this.devices.push(newDevice);
+    }
+  },
+
+  mounted: function() {
+    this.pullData();
+    this.videowallModal = new VideowallModal();
+    this.videowallModal.$mount('#videowall-modal');
+  }
+});
+new DeviceList().$mount('#devices');
+</script>

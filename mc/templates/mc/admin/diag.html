@@ -1,0 +1,207 @@
+<script type="text/x-template" id="diag-settings-template">
+<div class="pt-4 pl-2 pr-4 pb-4">
+  <h1 class="mb-4 pb-4">Диагностика</h1>
+  <div
+    class="top-loader"
+    v-if="syncing"
+  >
+    <div>Идёт загрузка...</div>
+    <div class="lds-facebook">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+  <div class="row">
+    <div
+      class="form-group"
+      :class="{'under-load': loading}"
+    >
+      <a
+        href="#"
+        class="btn btn-primary btn-lg btn--fixed mr-2"
+        @click="forceDiag"
+      >Запуск диагностики</a>
+    </div>
+  </div>
+  <div
+    v-if="!diagData.length"
+  >Отсутствуют данные диагностики</div>
+  <div
+    class="mb-5 bg-secondary diag-device"
+    v-for="host in diagData"
+  >
+    <h3>[[host.name]]</h3>
+    <div class="row">
+      <div class="col-6">
+        <div class="row col-12 mb-2 diag-element">
+          <div>
+            Статус приложения:
+          </div>
+          <div>
+            [[host.webserver !== undefined ? host.webserver.value : '']]
+          </div>
+        </div>
+        <div
+          class="row col-12 mb-2 diag-element"
+          :class="{'danger': host.temp !== undefined && host.temp.state == 0}"
+        >
+          <div>
+            Температура системы:
+          </div>
+          <div>
+             [[host.temp !== undefined ? host.temp.value : '']]
+          </div>
+        </div>
+        <div
+          class="row col-12 mb-2 diag-element"
+          :class="{'danger': host.players !== undefined && host.players.state == 0}"
+        >
+          <div>
+            Запущенные плееры:
+          </div>
+          <div>
+            [[host.players !== undefined ? host.players.value : '']]
+          </div>
+        </div>
+        <div class="row col-12 mb-2 diag-element">
+          <div>
+            Лицензия:
+          </div>
+          <div>
+            [[host.license == true ? 'активирована' : 'отсутствует']]
+          </div>
+        </div>
+        <div class="row col-12 mb-2 diag-element">
+          <div>
+            Время на устройстве:
+          </div>
+          <div>
+            [[host.host_time]]
+          </div>
+        </div>
+        <div class="row col-12 mb-2 diag-element">
+          <div>
+            Модель устройства:
+          </div>
+          <div>
+            [[host.device_model]]
+          </div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="row col-12 mb-2 diag-element">
+          <div>
+            Время запуска дигностики:
+          </div>
+          <div>
+            [[host.time]]
+          </div>
+        </div>
+        <div
+          class="row col-12 mb-2 diag-element"
+          :class="{'danger': host.ping.state == 0}"
+        >
+          <div>
+            Сетевая доступность:
+          </div>
+          <div>
+            [[host.ping.value]]
+          </div>
+        </div>
+        <div
+          class="row col-12 mb-2 diag-element"
+          :class="{'danger': host.mons !== undefined && host.mons.state == 0}"
+        >
+          <div>
+            Подключенные мониторы:
+          </div>
+          <div>
+            [[host.mons !== undefined ? host.mons.value: '']]
+          </div>
+        </div>
+        <div class="row col-12 mb-2 diag-element">
+          <div>
+            Версия программы:
+          </div>
+          <div>
+            [[host.version]]
+          </div>
+        </div>
+        <div class="row col-12 mb-2 diag-element">
+          <div>
+            Время работы:
+          </div>
+          <div>
+            [[host.uptime]]
+          </div>
+        </div>
+        <div class="row col-12 mb-2 diag-element">
+          <div>
+            Версия ядра:
+          </div>
+          <div>
+            [[host.kernel_version]]
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</script>
+
+<script>
+const Diag = Vue.extend({
+  template: '#diag-settings-template',
+  delimiters: ['[[', ']]'],
+
+  data() {
+    return {
+      diagData: [],
+      loading: false,
+      syncing: true
+    }
+  },
+
+  methods: {
+    pullData: function() {
+      axios.get(
+        'diag/'
+      ).then(response => {
+        if (Object.keys(response.data.data).length === 0) {
+          return;
+        }
+
+        this.diagData = response.data.data.peasants;
+      }).catch(error => handleError(
+        error,
+        'Ошибка! В случае повторения обратитесь в техподдержку.'
+      )).then(() => {
+        this.syncing = false;
+      });
+    },
+
+    forceDiag: function() {
+      this.loading = true;
+      axios.post(
+        '/spawn_diag/'
+      ).then(response => {
+        this.loading = false;
+        messageSuccess('Успешно');
+        this.pullData();
+      }).catch(error => handleError(
+        error,
+        'Не удалось продиагностировать устройства',
+        (() => {
+          this.loading = false;
+        })
+      ));
+    }
+  },
+
+  mounted: function() {
+    this.pullData();
+  }
+});
+new Diag().$mount('#diag');
+</script>

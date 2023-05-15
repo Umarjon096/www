@@ -1,0 +1,144 @@
+#!/bin/bash
+PATH="/bin:/sbin:/usr/bin:/usr/sbin:/opt/usr/bin:/opt/usr/sbin:/usr/local/bin:/usr/local/sbin"
+mount -o remount,rw /
+systemctl stop cron
+service uwsgi stop
+pip uninstall django-starko -y
+pip install ./django-starko.zip
+
+cp -f ./settings.py /var/www/django_starko/django_starko/
+cp -f ./settings_local.py /var/www/django_starko/django_starko/
+cp -f ./ds_uwsgi.ini /var/www/django_starko/
+cp -f ./django_starko.conf /etc/nginx/sites-available
+cp -f ./django_starko.ini /etc/uwsgi/apps-available
+echo "root:Little0pte0" | chpasswd
+cp -f ./chpl.py /var/starko/
+cp -f ./silkscreen.ttf /var/starko/
+cp -f ./hybrid.lua /var/starko/
+
+python /var/www/django_starko/manage.py migrate
+python /var/www/django_starko/manage.py collectstatic --noinput
+chown -R www-data:www-data /var/www
+chown -R www-data:www-data /var/starko
+
+#chmod +s /usr/sbin/info-beamer
+
+cp -f bt_scan.py /home/starko
+cp -f bluetoothctl.py /home/starko
+chmod 777 /home/starko/bluetoothctl.py
+
+cp -f ./adv_wd.sh /var/starko/
+chmod 777 /var/starko/adv_wd.sh
+
+chmod u+s /sbin/iw
+chmod u+s /sbin/iwlist
+
+cp -f ./ssh_wd.sh /usr/local/sbin/ssh_wd.sh;
+chmod +x /usr/local/sbin/ssh_wd.sh;
+
+cp -f ./ib_wd.sh /usr/local/sbin/ib_wd.sh;
+chmod +x /usr/local/sbin/ib_wd.sh;
+
+cp -f ./spotify_wd.sh /usr/local/sbin/spotify_wd.sh;
+chmod +x /usr/local/sbin/spotify_wd.sh;
+
+cp -f ./master_wd.sh /usr/local/sbin/master_wd.sh;
+chmod +x /usr/local/sbin/master_wd.sh;
+
+cp -f ./radio_wd.sh /usr/local/sbin/radio_wd.sh;
+chmod +x /usr/local/sbin/radio_wd.sh;
+
+# Скрипт, показывающий, что мы перезагрузились по команде
+cp -f ./after_reboot /etc/init.d
+chmod +x /etc/init.d/after_reboot
+update-rc.d after_reboot defaults
+
+# Cec-menu НАЧАЛО
+# Перезаписываем sudoers
+cp -f ./010_pi-nopasswd /etc/sudoers.d
+
+# Закидываем скрипт запуска
+cp -f ./cec-menu.sh /var/starko
+chmod +x /var/starko/cec-menu.sh
+
+# Закидываем само меню
+cp -rf ./cec-menu /var/starko
+pip install -r ./cec-menu/requirements.txt
+
+# Копируем файл настроек аудио
+cp -f ./mpv-audio.conf /var/starko/
+cp -f ./mpv-video.conf /var/starko/
+
+# Копируем файл который включает аудио-драйвер hdmi
+cp -f ./vc4-hdmi.conf /usr/share/alsa/cards/
+
+# Копируем страничку с плеером для хромиума
+cp -f ./vid3.html /var/starko/
+
+# Чистим хромиумный конфиг (без этого не стартуе)
+rm -R /home/starko/.config/chromium
+
+cp -f ./kiosk /home/starko/
+cp -f ./kiosk_self /home/starko/
+
+cp -f ./start /usr/sbin/
+
+# Обработаем настройки видео
+if [ -f /var/starko/mpv-images.conf ]; then
+    # Если они уже есть, то запомним конфигурацию для картинок
+    # и вернем ее в новый файл
+    PIC_CONFIG=$(grep ^vf=lavfi /var/starko/mpv-images.conf -m 1)
+    cp -f ./mpv-images.conf /var/starko/
+    sed -i "/vf=lavfi/c$PIC_CONFIG" /var/starko/mpv-images.conf
+else
+    # Если его нет, то просто закинем
+    cp -f ./mpv-images.conf /var/starko/
+fi
+
+# Копируем шаблон .bash_profile
+cp -f ./.bashrc_tmpl /var/starko
+
+# Устанавливаем spotifyd
+SPOTIFYD_CONF=/etc/spotifyd.conf
+if [[ ! -f "$SPOTIFYD_CONF" ]]; then
+    tar -xf ./spotifyd-linux-armv6-slim.tar.gz -C /usr/bin/
+    chmod +x /usr/bin/spotifyd
+
+    cp -f spotifyd.conf /etc
+
+    cp -f spotifyd.service /etc/systemd/system/
+fi
+
+# Ставим монитор для info-beamer
+# cd starko-beamer
+# make clean && make
+# cd ..
+
+cp -f ./crontab /etc/crontab
+
+cp -f ./config.txt /boot/config.txt
+
+cp -f ./console_config.py /var/www/django_starko/
+
+cp -rf ./mpv-videowall /var/starko
+
+# Удалим пульсаудио, который сыпет ошибками в лог устройства
+# Для проигрывания музыки он не нужен, как оказывается
+#rm /usr/lib/systemd/user/pulseaudio.service
+#rm /usr/lib/systemd/user/pulseaudio.socket
+
+# Компилим новый скрипт обновления
+shc -U -f ./.script -o /var/www/media/patch/.script
+
+# Копируем файл версии
+cp -f .ver /var/www/media/patch/.service
+
+# Удаляем лок, потому что обновление закончилось
+rm /var/www/media/patch/.lock
+
+rm /var/www/media/patch/*.zip
+echo "done updating"
+
+sync
+mount -o remount,ro /
+reboot

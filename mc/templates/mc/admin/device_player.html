@@ -1,0 +1,271 @@
+<script type="text/x-template" id="player-template">
+  <div class="bg-secondary p-4 mr-4 ml-4 device-space">
+    <div class="form-group row align-items-center mb-3">
+      <label class="col-6 col-form-label text-white text-transform-none">Название аудиоплеера</label>
+      <div class="col-6">
+        <input
+          type="text"
+          class="form-control"
+          v-model="player.name"
+          @input="handleChanges"
+        >
+      </div>
+    </div>
+    <!--div class="form-group row align-items-center mb-3">
+      <label class="col-6 col-form-label text-white text-transform-none">Spotify connect</label>
+      <div class="col-6 center-checkbox">
+        <label class="custom-control custom-checkbox">
+          <input
+            type="checkbox"
+            class="custom-control-input"
+            v-model="player.spotify"
+            @change="handleChanges"
+          >
+          <span class="custom-control-label"></span>
+        </label>
+      </div>
+    </div-->
+    <div
+      class="form-group row align-items-center mb-3"
+      v-if="!this.player.spotify"
+    >
+      <label class="col-6 col-form-label text-white text-transform-none">Громкость фиксирована</label>
+      <div class="col-6 center-checkbox">
+        <label class="custom-control custom-checkbox">
+          <input
+            type="checkbox"
+            class="custom-control-input"
+            v-model="player.volume_locked"
+            @change="handleChanges"
+          >
+          <span class="custom-control-label"></span>
+        </label>
+      </div>
+    </div>
+    <div
+      class="row col-12 mb-3"
+      v-show="this.player.spotify"
+    >
+      Данная функция работает только с аккаунтами, с активной подпиской Spotify Premium.
+    </div>
+    <div
+      class="form-group row align-items-center mb-3"
+      v-show="this.player.spotify"
+    >
+      <label class="col-6 col-form-label text-white text-transform-none">Логин Spotify</label>
+      <div class="col-6">
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="username"
+          @input="handleChanges"
+        >
+      </div>
+    </div>
+    <div
+      class="form-group row align-items-center mb-3"
+      v-show="this.player.spotify"
+    >
+      <label class="col-6 col-form-label text-white text-transform-none">Пароль Spotify</label>
+      <div class="col-6">
+        <div class="inner-addon right-addon">
+          <i
+            class="icon"
+            @mouseover="show = true;"
+            @mouseleave="show = false;"
+          >
+            {% include 'svg/eye.svg' %}
+          </i>
+          <input
+            :type="show ? 'text' : 'password'"
+            class="form-control"
+            v-model.trim="password"
+            @input="handleChanges"
+          >
+        </div>
+      </div>
+    </div>
+    <div
+      class="form-group row align-items-center mb-3"
+      v-show="!this.player.spotify"
+    >
+      <label class="col-6 col-form-label text-white text-transform-none">Очередность</label>
+      <div class="col-6">
+        <input
+          type="number"
+          class="form-control"
+          v-model.number="player.sequence"
+          @input="handleChanges"
+        >
+      </div>
+    </div>
+    <div class="form-group row align-items-center mb-0 buttons-center">
+      <a
+        href="#"
+        class="btn btn-primary"
+        @click="submitChanges"
+        v-show="changed"
+      >Сохранить</a>
+      <a
+        href="#"
+        class="btn btn-outline-danger"
+        @click="deleteSelf"
+      >Удалить</a>
+    </div>
+  </div>
+</script>
+
+<script>
+const Player = Vue.extend({
+  template: '#player-template',
+  delimiters: ['[[', ']]'],
+  props: [
+    'player'
+  ],
+
+  data() {
+    return {
+      changed: false,
+      show: false,
+      username: '',
+      password: ''
+    }
+  },
+
+  methods: {
+    handleChanges: function() {
+      this.changed = this.checkInput();
+    },
+
+    handleSpotify: function() {
+      const data = {host_id: this.player.host};
+
+      if (this.player.spotify) {
+        data.username = this.username;
+        data.password = this.password;
+        data.hostname = this.player.name;
+      }
+
+      axios.post(
+        '/spotify/',
+        data
+      ).then(response => {
+        if (response.data.on) {
+          messageSuccess(
+            `Spotify Connect на устройстве ${this.player.name} успешно включен`
+          );
+        } else {
+          messageSuccess(
+            `Spotify Connect на устройстве ${this.player.name} успешно отключен`
+          );
+        }
+      }).catch(error => handleError(
+        error,
+        `Не удалось настроить Spotify Connect на устройстве ${this.player.name}`
+      ));
+    },
+
+    checkInput: function() {
+      return this.player.name.length > 0
+        && !isNaN(Number(this.player.sequence))
+        && (this.player.spotify
+        && this.username.length > 0
+        && this.password.length > 0
+        || !this.player.spotify);
+    },
+
+    submitChanges: function() {
+      if (this.checkUnsaved()) {
+        this.savePlayer();
+      } else {
+        this.updatePlayer();
+      }
+    },
+
+    checkUnsaved: function() {
+      return this.player.id === undefined;
+    },
+
+    getPlayerData: function() {
+      return {
+        music_box: true,
+        video_wall: false,
+        host_id: this.player.host,
+        name: this.player.name,
+        sequence: this.player.sequence,
+        volume_locked: this.player.spotify ? true : this.player.volume_locked,
+        pixels: [],
+        spotify: this.player.spotify
+      }
+    },
+
+    savePlayer: function() {
+      axios.post(
+        'monitor/',
+        this.getPlayerData()
+      ).then(response => {
+        //this.handleSpotify();
+        this.player.id = response.data.id;
+        messageSuccess('Плеер успешно сохранён');
+        this.changed = false;
+      }).catch(error => handleError(
+        error,
+        'Не удалось сохранить плеер'
+      ));
+    },
+
+    updatePlayer: function() {
+      axios.put(
+        `monitor/${this.player.id}`,
+        this.getPlayerData()
+      ).then(response => {
+        //this.handleSpotify();
+        messageSuccess('Изменения успешно применены');
+        this.changed = false;
+      }).catch(error => handleError(
+        error,
+        'Не удалось применить изменения'
+      ));
+    },
+
+    deleteLocal: function() {
+      this.$emit('delete');
+      this.$destroy();
+    },
+
+    deleteSelf: function() {
+      if (this.checkUnsaved()) {
+        this.deleteLocal();
+        return;
+      }
+
+      if(!confirm('Вы уверены, что хотите удалить музыкальный плеер?')) {
+        return;
+      }
+
+      axios.delete(
+        `monitor/${this.player.id}`
+      ).then(response => {
+        messageSuccess('Плеер успешно удалён');
+        this.deleteLocal();
+      }).catch(error => handleError(
+        error,
+        'Не удалось удалить плеер'
+      ));
+
+      // Тихо отключаем Spotify для удаляемого плеера
+      axios.post('/spotify/', {host_id: this.player.host});
+    }
+  },
+
+  mounted: function() {
+    if (this.player.spotify) {
+      axios.get(
+        `/spotify/${this.player.host}`
+      ).then(response => {
+        this.username = response.data.username;
+      }).catch(error => handleError(error));
+    }
+  }
+});
+</script>

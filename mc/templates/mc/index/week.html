@@ -1,0 +1,149 @@
+<div class="modal fade" id="monitor" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog  modal-sm" role="document">
+    <div class="modal-content" id="host_settings_region">
+      <div class="modal-header">
+        <h4 class="modal-title border-bottom-0">Время работы мониторов</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="days">
+          <div class="day" day="0">
+            <div class="day__title">Все дни</div>
+            <input class="day_of_week" size="5" type="hidden" value="0">
+            <div class="day__time">
+              <input type="time" class="form-control form-control-sm time_end">
+              <div class="pr-1 pl-1">—</div>
+              <input type="time" class="form-control form-control-sm time_begin">
+            </div>
+            <div class='day__del clear'>
+              <i class='icon icon--del'>
+                {% include 'svg/times.svg' %}
+              </i>
+            </div>
+          </div>
+          <div class="day" style="display: none;" day="1">
+            <div class="day__title">Понедельник</div>
+            <input class="day_of_week" size="5" type="hidden" value="1">
+            <div class="day__time">
+              <input type="time" class="form-control form-control-sm time_end">
+              <div class="pr-1 pl-1">—</div>
+              <input type="time" class="form-control form-control-sm time_begin">
+            </div>
+            <div class='day__del del'>
+              <i class='icon icon--del'>
+                {% include 'svg/times.svg' %}
+              </i>
+            </div>
+          </div>
+          <div class="day" style="display: none;" day="2">
+            <div class="day__title">Вторник</div>
+            <input class="day_of_week" size="5" type="hidden" value="2">
+            <div class="day__time">
+              <input type="time" class="form-control form-control-sm time_end">
+              <div class="pr-1 pl-1">—</div>
+              <input type="time" class="form-control form-control-sm time_begin">
+            </div>
+            <div class='day__del del'>
+              <i class='icon icon--del'>
+                {% include 'svg/times.svg' %}
+              </i>
+            </div>
+          </div>
+          <div class="day" style="display: none;" day="3">
+            <div class="day__title">Среда</div>
+            <input class="day_of_week" size="5" type="hidden" value="3">
+            <div class="day__time">
+              <input type="time" class="form-control form-control-sm time_end">
+              <div class="pr-1 pl-1">—</div>
+              <input type="time" class="form-control form-control-sm time_begin">
+            </div>
+            <div class='day__del del'>
+              <i class='icon icon--del'>
+                {% include 'svg/times.svg' %}
+              </i>
+            </div>
+          </div>
+          <div class="day" style="display: none;" day="4">
+            <div class="day__title">Четверг</div>
+            <input class="day_of_week" size="5" type="hidden" value="4">
+            <div class="day__time">
+              <input type="time" class="form-control form-control-sm time_end">
+              <div class="pr-1 pl-1">—</div>
+              <input type="time" class="form-control form-control-sm time_begin">
+            </div>
+            <div class='day__del del'>
+              <i class='icon icon--del'>
+                {% include 'svg/times.svg' %}
+              </i>
+            </div>
+          </div>
+          <div class="day" style="display: none;" day="5">
+            <div class="day__title">Пятница</div>
+            <input class="day_of_week" size="5" type="hidden" value="5">
+            <div class="day__time">
+              <input type="time" class="form-control form-control-sm time_end">
+              <div class="pr-1 pl-1">—</div>
+              <input type="time" class="form-control form-control-sm time_begin">
+            </div>
+            <div class='day__del del'>
+              <i class='icon icon--del'>
+                {% include 'svg/times.svg' %}
+              </i>
+            </div>
+          </div>
+          <div class="day" style="display: none;" day="6">
+            <div class="day__title">Суббота</div>
+            <input class="day_of_week" size="5" type="hidden" value="6">
+            <div class="day__time">
+              <input type="time" class="form-control form-control-sm time_end">
+              <div class="pr-1 pl-1">—</div>
+              <input type="time" class="form-control form-control-sm time_begin">
+            </div>
+            <div class='day__del del'>
+              <i class='icon icon--del'>
+                {% include 'svg/times.svg' %}
+              </i>
+            </div>
+          </div>
+          <div class="day" style="display: none;" day="7">
+            <div class="day__title">Воскресенье</div>
+            <input class="day_of_week" size="5" type="hidden" value="7">
+            <div class="day__time">
+              <input type="time" class="form-control form-control-sm time_end">
+              <div class="pr-1 pl-1">—</div>
+              <input type="time" class="form-control form-control-sm time_begin">
+            </div>
+            <div class='day__del del'>
+              <i class='icon icon--del'>
+                {% include 'svg/times.svg' %}
+              </i>
+            </div>
+          </div>
+        </div>
+        <div class="days-btns">
+          <select id="week" class="custom-select custom-select--gray custom-select--sm" name="days">
+            <option value="1">Понедельник</option>
+            <option value="2">Вторник</option>
+            <option value="3">Среда</option>
+            <option value="4">Четверг</option>
+            <option value="5">Пятница</option>
+            <option value="6">Суббота</option>
+            <option value="7">Воскресенье</option>
+          </select>
+          <span class="btn btn-outline-secondary btn-outline-secondary btn-square day_adder">Добавить</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary apply_bl">Сохранить</button>
+        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Отмена</button>
+      </div>
+      <div class="lds-facebook" style="display: none;">
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+    </div>
+  </div>
+</div>

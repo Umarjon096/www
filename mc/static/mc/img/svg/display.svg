@@ -1,0 +1,34 @@
+<svg class="svg inlined-svg" role="img" viewBox="0 0 25 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+        d="
+            M23.2336
+            17.9052H1.62105C1.24842
+            17.9052
+            1
+            17.6568
+            1
+            17.2841V1.62105C1
+            1.24842
+            1.24842
+            1
+            1.62105
+            1H23.2336C23.6062
+            1
+            23.8546
+            1.24842
+            23.8546
+            1.62105V17.2841C23.8546
+            17.5947
+            23.5441
+            17.9052
+            23.2336
+            17.9052Z
+        "
+        stroke="white"
+        stroke-miterlimit="10"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+    />
+    <path d="M4.97466 3.98105L2.9873 5.96841" stroke="white" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M8.94938 3.98105L2.9873 9.94312" stroke="white" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

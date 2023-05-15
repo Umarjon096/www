@@ -1,0 +1,315 @@
+<script type="text/x-template" id="device-template">
+<div class="device">
+  <!--h3 class="pb-3">[[device.name]]</h3-->
+  <div class="row mb-5">
+  <div class="col-2">
+    <div class="form-group">
+    <label class="col-form-label">IP адрес</label>
+    <input
+      type="text"
+      class="form-control"
+      v-model="device.ip"
+      @input="manageInput"
+      :class="{'error-glow': invalidIp}"
+    >
+    </div>
+    <div class="form-group">
+      <label class="custom-control custom-checkbox">
+        <input
+          type="checkbox"
+          class="custom-control-input"
+          v-model="device.is_nuc"
+          @change="manageInput"
+        >
+        <span class="custom-control-label">
+          NUC
+        </span>
+      </label>
+    </div>
+  </div>
+  <div class="col-7 pt-3">
+    <display
+      v-if="display"
+      :monitor="display"
+      @delete="deleteDisplay"
+    ></display>
+    <display
+      v-if="display2"
+      :monitor="display2"
+      @delete="deleteDisplay2"
+    ></display>
+    <player
+      v-if="player"
+      :player="player"
+      @delete="deletePlayer"
+    ></player>
+    <videowall
+      v-if="videowall"
+      :wall="videowall"
+      :modal="modal"
+      @delete="deleteVideowall"
+    ></videowall>
+    <div
+      class="videowall"
+      v-if="device.vw_taken"
+    >
+      <div class="videowall-text">ВИДЕОСТЕНА</div>
+    </div>
+  </div>
+  <div class="col-3 pt-3">
+    <a
+      href="#"
+      class="btn btn-primary btn-lg btn--fixed mb-3"
+      @click="manageChanges"
+      v-if="changed"
+    >Сохранить</a>
+    <a
+      href="#"
+      class="btn btn-outline-danger btn-lg btn--fixed mb-3"
+      @click="deleteSelf"
+    >Удалить</a>
+    <a
+      href="#"
+      class="btn btn-outline-secondary btn-lg btn--fixed mb-3"
+      @click="addDisplay"
+      v-if="device.id > 0 && !videowall && !display && !device.vw_taken"
+    >+ Монитор</a>
+    <a
+      href="#"
+      class="btn btn-outline-secondary btn-lg btn--fixed mb-3"
+      @click="addDisplay2"
+      v-if="device.is_nuc && display && !display2"
+    >+ Монитор</a>
+    <a
+      href="#"
+      class="btn btn-outline-secondary btn-lg btn--fixed mb-3"
+      @click="addPlayer"
+      v-if="device.id > 0 && !videowall && !player && !device.vw_taken"
+    >+ Муз. плеер</a>
+    <!--a
+      href="#"
+      class="btn btn-outline-secondary btn-lg btn--fixed mb-3"
+      @click="addVideowall"
+      v-if="device.id > 0 && !display && !player && !videowall && !device.vw_taken"
+    >+ Видеостена</a-->
+  </div>
+  </div>
+</div>
+</script>
+
+<script>
+const Device = Vue.extend({
+  template: '#device-template',
+  delimiters: ['[[', ']]'],
+  props: [
+    'device',
+    'modal'
+  ],
+
+  data() {
+    return {
+      changed: false,
+      invalidIp: false,
+      player: undefined,
+      display: undefined,
+      display2: undefined,
+      videowall: undefined,
+    }
+  },
+
+  components: {
+    display: Display,
+    display2: Display,
+    player: Player,
+    videowall: Videowall
+  },
+
+  methods: {
+    validateIp: function() {
+      const ipRegex = new RegExp([
+        /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\./
+        ,/(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\./
+        ,/(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\./
+        ,/(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
+      ].map(r => r.source).join(''));
+      this.invalidIp = !ipRegex.test(this.device.ip);
+      return !this.invalidIp;
+    },
+
+    manageInput: function() {
+      this.changed = this.validateIp();
+    },
+
+    manageChanges: function() {
+      if (this.device.id < 0) {
+        // Если id отрицательный, значит девайс существует только локально
+        this.saveSelf();
+      } else {
+        // В противном случае просто обновим его данные
+        this.updateSelf();
+      }
+    },
+
+    saveSelf: function() {
+      axios.post(
+        'host/',
+        {
+          ip: this.device.ip,
+          is_nuc: this.device.is_nuc
+        }
+      ).then(response => {
+        const oldId = this.device.id;
+        this.device.id = response.data.id;
+        this.device.name = response.data.name;
+
+        // Обновляем данные о хосте в родительском компоненте
+        this.$emit('save', {
+          oldId: oldId,
+          newId: this.device.id,
+          ip: this.device.ip,
+          is_nuc: this.device.is_nuc,
+          name: this.device.name
+        });
+
+        messageSuccess('Хост успешно добавлен');
+        this.changed = false;
+      }).catch(error => handleError(
+        error,
+        'Не удалось создать хост'
+      ));
+    },
+
+    updateSelf: function() {
+      axios.put(
+        `host/${this.device.id}`,
+        {
+          ip: this.device.ip,
+          is_nuc: this.device.is_nuc
+        }
+      ).then(response => {
+        messageSuccess('Изменения успешно применены');
+        this.$emit('update');
+      }).catch(error => handleError(
+        error,
+        'Не удалось обновить данные о хосте'
+      ));
+    },
+
+    deleteLocal: function() {
+      this.$emit('delete', this.device.id);
+      this.$destroy();
+    },
+
+    deleteSelf: function() {
+      // Если хоста ещё нет на сервере, то удаляем только локально
+      if (this.device.id < 0) {
+        this.deleteLocal();
+        return;
+      }
+
+      // В противном случае удаляем как положено
+      if (!confirm('Удалить хост и все его мониторы?')) {
+        return;
+      }
+
+      axios.delete(
+        `host/${this.device.id}`
+      ).then(response => {
+        this.deleteLocal();
+        messageSuccess('Хост успешно удалён');
+      }).catch(error => handleError(
+        error,
+        'Не удалось удалить хост'
+      ));
+
+      axios.post('/spotify/', {host_id: this.device.id});
+    },
+
+    addDisplay: function() {
+      this.display = {
+        host: this.device.id,
+        name: '',
+        orientation: 'standard',
+        host_slot: 0,
+        sequence: 0,
+        sync_group: 0,
+        nuc_mon: this.device.is_nuc,
+        audio_output: 0
+      }
+    },
+
+    addDisplay2: function() {
+      this.display = {
+        host: this.device.id,
+        name: '',
+        orientation: 'standard',
+        host_slot: 1,
+        sequence: 0,
+        sync_group: 0,
+        nuc_mon: this.device.is_nuc,
+        audio_output: 0
+      }
+    },
+
+    deleteDisplay: function() {
+      if (this.display2 !== undefined) {
+        this.display = this.display2;
+        this.display2 = undefined;
+      } else {
+        this.display = undefined;
+      }
+    },
+
+    deleteDisplay2: function() {
+      this.display2 = undefined;
+    },
+
+    addPlayer: function() {
+      this.player = {
+        host: this.device.id,
+        name: '',
+        volume_locked: false,
+        spotify: false,
+        sequence: 0
+      };
+    },
+
+    deletePlayer: function() {
+      this.player = undefined;
+    },
+
+    addVideowall: function() {
+      this.videowall = {
+        id: -this.device.id,  // Задаем начальное значение до сохранения
+        video_wall: true,
+        host: this.device.id,
+        name: '',
+        orientation: 'standard',
+        sequence: 0,
+        pixels: [],
+        video_wall_borders: 0,
+        video_wall_x: 1,
+        video_wall_y: 1
+      };
+    },
+
+    deleteVideowall: function() {
+      this.videowall = undefined;
+    },
+  },
+
+  mounted: function() {
+    for (const monitor of this.device.monitors) {
+      if (monitor.music_box) {
+        this.player = monitor;
+
+      } else if (monitor.video_wall) {
+        this.videowall = monitor;
+
+      } else {
+        this.display = monitor;
+      }
+    }
+  }
+});
+</script>

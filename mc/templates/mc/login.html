@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru-RU">
+  {% load staticfiles %}
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Opteo</title>
+    <link href="{% static 'mc/js/lib/bootstrap-4.3.1/scss/bootstrap.css' %}" rel="stylesheet">
+    <link href="{% static 'mc/css/style.css' %}" rel="stylesheet">
+  </head>
+  <body>
+    <div class="wrapper wrapper--login">
+      <form method="post" action="{% url 'login' %}" class="login">
+        {% csrf_token %}
+        <div class="logo logo--big">
+          {% include 'svg/logo.svg' %}
+        </div>
+        <div class="form-group">
+          <label class="col-form-label">Логин</label>
+          <input type="text" class="form-control" name="username" placeholder="Введите логин">
+        </div>
+        <div class="form-group">
+          <label class="col-form-label">Пароль</label>
+          <div class="inner-addon right-addon">
+            <i
+              class="icon"
+              onMouseOver="show();"
+              onMouseLeave="hide();"
+            >
+              {% include 'svg/eye.svg' %}
+            </i>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              class="form-control"
+              placeholder="Введите пароль"
+            >
+          </div>
+        </div>
+        <div class="form-group text-left">
+          <div class="custom-control custom-checkbox">
+            <input type="checkbox" class="custom-control-input" name="remember_me" id="remember_me">
+            <label class="custom-control-label" for="remember_me">Запомнить меня</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <a
+            href="#"
+            class="btn btn-primary btn-lg btn--fixed"
+            onclick="submitForm();"
+          >Войти</a>
+        </div>
+        <input type="hidden" name="next" value="{{ next }}"/>
+      </form>
+      {% if form.non_field_errors %}
+        <!--TODO оформить ошибки-->
+        <ul>
+          {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+    <script>
+      function show() {
+        document.getElementById('password').type = 'text';
+      }
+
+      function hide() {
+        document.getElementById('password').type = 'password';
+      }
+
+      function submitForm() {
+        document.forms[0].submit();
+        return false;
+      }
+
+      document.onkeydown = checkKeyPress;
+
+      function checkKeyPress(e) {
+        let charCode;
+
+        if (e && e.which) {
+          charCode = e.which;
+        } else if (window.event) {
+          charCode = window.event.keyCode;
+        }
+
+        if (charCode == 13) {
+          submitForm();
+        }
+      }
+    </script>
+  </body>
+</html>

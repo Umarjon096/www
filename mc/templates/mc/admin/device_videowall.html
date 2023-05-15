@@ -1,0 +1,446 @@
+<div class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" id="videowall-element">
+  <div id="videowall-modal"></div>
+</div>
+
+<script type="text/x-template" id="videowall-modal-template">
+  <div class="modal-dialog modal-sm" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title border-bottom-0">Параметры монитора</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="row align-items-center">
+          <label class="col-4 col-form-label text-white text-transform-none">Ip</label>
+          <div class="col-8">
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              v-model.trim="ip_address"
+            >
+          </div>
+        </div>
+        <div class="form-group row align-items-center mb-3">
+          <label class="col-4 col-form-label text-white text-transform-none">Перевёрнут</label>
+          <div class="col-8 center-checkbox">
+            <label class="custom-control custom-checkbox">
+              <input
+                type="checkbox"
+                class="custom-control-input"
+                v-model="inverted"
+              >
+              <span class="custom-control-label"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer buttons-center">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">Закрыть</button>
+      </div>
+    </div>
+  </div>
+</script>
+
+<script>
+const VideowallModal = Vue.extend({
+  template: '#videowall-modal-template',
+  delimiters: ['[[', ']]'],
+
+  data() {
+    return {
+      ip_address: '',
+      inverted: false,
+      id: ''
+    }
+  },
+
+  mounted: function() {
+    this.$on('monitorSent', (monitorData, id) => {
+      this.ip_address = monitorData.ip_address;
+      this.inverted = monitorData.inverted;
+      this.id = id;
+    });
+  }
+});
+</script>
+
+<script type="text/x-template" id="videowall-template">
+  <div class="bg-secondary p-4 mr-4 ml-4 device-space">
+    <div class="form-group row align-items-center mb-3">
+      <label class="col-6 col-form-label text-white text-transform-none">Название монитора</label>
+      <div class="col-6">
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="wall.name"
+          @input="showSubmit"
+        >
+      </div>
+    </div>
+    <div class="form-group row align-items-center mb-3">
+      <label class="col-6 col-form-label text-white text-transform-none">Поворот</label>
+      <div class="col-6">
+        <select
+          class="custom-select"
+          v-model="wall.orientation"
+          @input="showSubmit"
+        >
+          <option
+            v-for="orientation in orientations"
+            :value="orientation.value"
+          >[[orientation.title]]</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group row align-items-center mb-3">
+      <label class="col-6 col-form-label text-white text-transform-none">Очередность</label>
+      <div class="col-6">
+        <input
+          type="text"
+          class="form-control"
+          v-model.number="wall.sequence"
+          @input="showSubmit"
+        >
+      </div>
+    </div>
+    <div class="form-group row align-items-center mb-3">
+      <label class="col-6 col-form-label text-white text-transform-none">Толщина рамки в пикселях</label>
+      <div class="col-6">
+        <input
+          type="text"
+          class="form-control"
+          v-model.number="wall.video_wall_borders"
+          @input="showSubmit"
+        >
+      </div>
+    </div>
+    <div class="col-12">Конфигурация видеостены</div>
+    <div class="form-group row align-items-center mb-3 videowall-view">
+      <div class="videowall-content">
+        <input
+          type="range"
+          class="videowall-horizontal"
+          min="1"
+          max="5"
+          step="1"
+          v-model.number="wall.video_wall_x"
+          @input="showSubmit"
+          @input="changeColumns"
+        >
+        <div class="videowall-vertical">
+          <input
+            type="range"
+            min="1"
+            max="5"
+            step="1"
+            value="1"
+            v-model.number="wall.video_wall_y"
+            @input="showSubmit"
+            @input="changeRows"
+          >
+        </div>
+        <div>
+          <table
+            class="videowall-table"
+            :class="orientationClasses[wall.orientation]"
+          >
+            <tr
+              v-for="row in videoTable"
+            >
+              <td
+                class="monitor-cell"
+                data-toggle="modal"
+                data-target="#videowall-element"
+                v-for="cell in row"
+                @click="openDisplayData(cell.y_pos, cell.x_pos)"
+                :class="{
+                  'flipped': cell.inverted,
+                  'monitor-active': cell.valid
+                }"
+              >
+                <div class="monitor-text">A</div>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="form-group row align-items-center mb-0 buttons-center">
+      <a
+        href="#"
+        class="btn btn-primary"
+        v-show="changed"
+        @click="saveChanges"
+      >Сохранить</a>
+      <a
+        href="#"
+        class="btn btn-outline-danger"
+        @click="deleteSelf"
+      >Удалить</a>
+    </div>
+  </div>
+</script>
+
+<script>
+const Videowall = Vue.extend({
+  template: '#videowall-template',
+  delimiters: ['[[', ']]'],
+  props: [
+    'wall',
+    'modal'
+  ],
+
+  data() {
+    return {
+      orientations: [{
+        value: 'left',
+        title: 'Повёрнут влево'
+      },
+      {
+        value: 'standard',
+        title: 'Нет'
+      },
+      {
+        value: 'right',
+        title: 'Повёрнут вправо'
+      },
+      {
+        value: 'inverted',
+        title: 'Перевёрнут'
+      }],
+      orientationClasses: {
+        'standart': '',
+        'left': 'turn-left',
+        'right': 'turn-right',
+        'inverted': 'turn-over'
+      },
+      videoTable: [],
+      currentCell: null,
+      changed: false
+    }
+  },
+
+  methods: {
+    openDisplayData: function(row, column) {
+      this.currentCell = this.videoTable[row][column];
+      this.modal.$emit('monitorSent', this.currentCell, this.wall.id);
+    },
+
+    defaultMonitor: function(y, x) {
+      return {
+        inverted: false,
+        ip_address: '',
+        y_pos: y,
+        x_pos: x,
+        valid: false
+      };
+    },
+
+    changeColumns: function() {
+      // Вызываем на каждый сдвиг ползунка, поэтому добавляем/удаляем по одному
+      const old = this.videoTable[0].length;
+      if (this.wall.video_wall_x > old) {
+        this.videoTable.forEach((val, i) => {
+          val.push(this.defaultMonitor(i, old));
+        });
+
+      } else if (this.wall.video_wall_x < old) {
+        this.videoTable.forEach(val => {
+          val.splice(-1, 1);
+        });
+      }
+    },
+
+    changeRows: function() {
+      // Вызываем на каждый сдвиг ползунка, поэтому добавляем/удаляем по одному
+      const old = this.videoTable.length;
+      if (this.wall.video_wall_y > old) {
+        const newRow = [];
+        for (let i = 0; i < this.videoTable[0].length; i++) {
+          newRow.push(this.defaultMonitor(old, i));
+        }
+        this.videoTable.push(newRow);
+
+      } else if (this.wall.video_wall_y < old) {
+        this.videoTable.splice(-1, 1);
+      }
+    },
+
+    showSubmit: function() {
+      this.changed = this.wall.name.length > 0;
+    },
+
+    checkUnused: function() {
+      return this.videoTable.every(
+        line => line.every(
+          pixel => pixel.ip_address.length > 0
+        )
+      );
+    },
+
+    saveChanges: function() {
+      if (!this.checkUnused()) {
+        if (!confirm('У вас остались незадействованные мониторы. Сохранить?')) {
+          return;
+        }
+      }
+
+      if (this.wall.id < 0) {
+        this.saveVideoWall();
+      } else {
+        this.updateVideoWall();
+      }
+    },
+
+    getVideoWallData: function() {
+      return {
+        music_box: false,
+        video_wall: true,
+        host_id: this.wall.host,
+        name: this.wall.name,
+        orientation: this.wall.orientation,
+        sequence: this.wall.sequence,
+        pixels: this.videoTableToPixels(),
+        video_wall_borders: this.wall.video_wall_borders,
+        video_wall_x: this.wall.video_wall_x,
+        video_wall_y: this.wall.video_wall_y
+      }
+    },
+
+    saveVideoWall: function() {
+      axios.post(
+        'monitor/',
+        this.getVideoWallData()
+      ).then(response => {
+        this.wall.id = response.data.id;
+        messageSuccess('Видеостена успешно сохранена');
+        this.changed = false;
+      }).catch(error => handleError(
+        error,
+        'Не удалось сохранить видеостену'
+      ));
+    },
+
+    updateVideoWall: function() {
+      axios.put(
+        `monitor/${this.wall.id}`,
+        this.getVideoWallData()
+      ).then(response => {
+        messageSuccess('Изменения успешно применены');
+        this.changed = false;
+      }).catch(error => handleError(
+        error,
+        'Не удалось применить изменения'
+      ));
+    },
+
+    deleteLocal: function() {
+      this.$emit('delete');
+      this.$destroy();
+    },
+
+    deleteSelf: function() {
+      if (this.wall.id < 0) {
+        this.deleteLocal();
+        return;
+      }
+
+      if (!confirm('Вы уверены, что хотите удалить видеостену?')) {
+        return;
+      }
+
+      axios.delete(
+        `monitor/${this.wall.id}`
+      ).then(response => {
+        messageSuccess('Видеостена успешно удалена');
+        this.deleteLocal();
+      }).catch(error => handleError(
+        error,
+        'Не удалось удалить видеостену'
+      ));
+    },
+
+    checkIp: function(string) {
+      const ipRegex = new RegExp([
+        /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\./
+        ,/(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\./
+        ,/(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\./
+        ,/(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
+      ].map(r => r.source).join(''));
+      return ipRegex.test(string);
+    },
+
+    fillFromPixels: function() {
+      for (let i = 0; i < this.wall.pixels.length; i++) {
+        const pixel = this.wall.pixels[i];
+        const x = pixel.x_pos - 1;
+        const y = pixel.y_pos - 1;
+
+        if (x < this.wall.video_wall_x && y < this.wall.video_wall_y) {
+          const cur = this.videoTable[y][x];
+          cur.inverted = pixel.inverted;
+          cur.ip_address = pixel.ip_address;
+          // С сервера всегда возвращаются валидные ip
+          cur.valid = true;
+        }
+      }
+    },
+
+    videoTableToPixels: function() {
+      const pixels = [];
+
+      this.videoTable.forEach(row => row.forEach(monitor => {
+        if (monitor.valid) {
+          pixels.push({
+            inverted: monitor.inverted,
+            ip_address: monitor.ip_address,
+            x_pos: monitor.x_pos + 1,
+            y_pos: monitor.y_pos + 1
+          });
+        }
+      }));
+
+      return pixels;
+    },
+
+    reshapeVideoTable: function() {
+      // Заполняем массив через push, чтобы задействовать реактивность Vue
+      for (let i = 0; i < this.wall.video_wall_y; i++) {
+        const newRow = [];
+
+        for (let j = 0; j < this.wall.video_wall_x; j++) {
+          newRow.push(this.defaultMonitor(i, j));
+        }
+
+        this.videoTable.push(newRow);
+      }
+
+      if (this.wall.pixels) {
+        this.fillFromPixels();
+      }
+    }
+  },
+
+  mounted: function() {
+    // Жуткий костыль, чтобы изменять значения только текущей стены
+    this.modal.$watch(function() {
+      return {
+        id: this.id,
+        ip_address: this.ip_address,
+        inverted: this.inverted
+      }
+    }, newVal => {
+      if (newVal.id === this.wall.id) {
+        this.currentCell.ip_address = newVal.ip_address;
+        this.currentCell.inverted = newVal.inverted;
+        this.currentCell.valid = this.checkIp(this.currentCell.ip_address);
+        this.showSubmit();
+      }
+    });
+
+    this.reshapeVideoTable();
+  }
+});
+</script>

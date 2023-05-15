@@ -1,0 +1,38 @@
+#!/bin/sh
+hostname -I > /var/starko/media/_ip
+xset -dpms     # disable DPMS (Energy Star) features.
+xset s off     # disable screen saver
+xset s noblank # don't blank the video device
+matchbox-window-manager -use_titlebar no &
+unclutter &    # hide X mouse cursor unless mouse activated
+chromium-browser \
+--kiosk \
+--incognito \
+--noerrdialogs \
+--disable-restore-session-state \
+--disable-client-side-phishing-detection \
+--disable-features=TranslateUI \
+--disk-cache-dir=/tmp \
+--disable-translate \
+--disable-features=Translate \
+--no-first-run \
+--fast \
+--fast-start \
+--disable-infobars \
+--autoplay-policy=no-user-gesture-required \
+--start-fullscreen \
+--window-position=0,0 \
+--disable-background-networking \
+--disable-component-update \
+--check-for-update-interval=3000000 \
+--disable-gl-error-limit \
+--aggressive-cache-discard \
+--disable-background-networking \
+--dns-prefetch-disable \
+--disable-plugins \
+--no-pings \
+--num-raster-threads=1 \
+--renderer-process-limit=1 \
+--disk-cache-size=52428800 \
+--force-device-scale-factor=1.0 \
+http://127.0.0.1

@@ -1,0 +1,9 @@
+image: alpine:latest
+
+build:
+    script:
+        - apk add zip
+        - ./manual-zip.sh
+    artifacts:
+        paths:
+            - "*.zip"

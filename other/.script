@@ -1,0 +1,45 @@
+#!/bin/bash
+#value=$(<./.lock)
+home_path="$(dirname $(readlink -f $0))"
+cd $home_path
+value="$(ls -f|grep .lock)"
+echo "$value"
+
+if [ "$value" ]; then
+    echo "update"
+
+    file="$(ls -tr |grep update | tail -n 1)"
+
+    if ! [ "$file" ]; then
+        echo "no patch archive"
+        rm ./.lock
+        rm ./*.zip
+        exit
+    fi
+
+    fname="${file%.*}"
+
+    gpg -d --batch -o pi.zip --passphrase Gor1lla8myBreakfast ./"$file"
+
+    if [ $? -ne 0 ]; then
+        echo "Wrong file"
+        rm ./.lock *.update *.zip
+        exit
+    fi
+
+    unzip -o pi.zip -d "/tmp/update"
+    rm -r $file
+    chmod -R 777 /tmp/update
+    cd /tmp/update
+    ver_file="$(ls -f|grep .ver)"
+
+    if ! [ "$ver_file" ]; then
+        echo "no version file"
+        exit
+    fi
+
+    ./patch_script
+
+else
+    echo "no_update"
+fi

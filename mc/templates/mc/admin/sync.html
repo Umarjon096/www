@@ -1,0 +1,338 @@
+<script type="text/x-template" id="synctime-template">
+<div class="form-group row align-items-center">
+  <div class="col-11">
+    <input
+      type="time"
+      class="form-control"
+      v-model.trim="time.time"
+      @input="changeSelf"
+    >
+  </div>
+  <div class="col-1">
+    <i
+      class="icon icon-delete"
+      v-show="time.id > 0"
+      @click="deleteSelf"
+    >
+      {% include 'svg/times.svg' %}
+    </i>
+  </div>
+</div>
+</script>
+
+<script>
+const SyncTime = Vue.extend({
+  template: '#synctime-template',
+  delimiters: ['[[', ']]'],
+  props: [
+    'time'
+  ],
+
+  methods: {
+    deleteSelf: function() {
+      this.$emit('delete', this.time.id);
+      this.$destroy();
+    },
+
+    changeSelf: function() {
+      this.$emit('change', this.time);
+    },
+  }
+});
+</script>
+
+<script type="text/x-template" id="sync-settings-template">
+<div class="pt-4 pl-2 pr-4 pb-4">
+  <h1 class="mb-4 pb-4">Синхронизация</h1>
+  <div
+    class="top-loader"
+    v-if="loading"
+  >
+    <div>Идёт загрузка...</div>
+    <div class="lds-facebook">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-6">
+      <div class="form-group">
+        <label class="col-form-label">Адрес сервера</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="globalUrl"
+          @input="handleChanges(changeAddress)"
+        >
+      </div>
+      <div class="form-group">
+        <label class="col-form-label">Периодичность соединения с сервером, минут</label>
+        <input
+          type="number"
+          class="form-control"
+          v-model.number="period"
+          @input="handleChanges(changePeriod)"
+        >
+      </div>
+      <div class="form-group d-flex justify-content-between align-items-center">
+        <label for="syncSwitch">Синхронизация по расписанию</label>
+        <div class="custom-control custom-switch">
+          <input
+            type="checkbox"
+            class="custom-control-input"
+            id="syncSwitch"
+            v-model="syncBySchedule"
+            @change="handleChanges(changeSynctype)"
+          >
+          <label class="custom-control-label" for="syncSwitch"></label>
+        </div>
+      </div>
+      <div
+        v-if="syncBySchedule"
+      >
+        <synctime
+          v-for="synctime in activeSynctimes()"
+          :key="synctime.id"
+          :time="synctime"
+          @delete="deleteSynctimeLocal"
+          @input="changeSynctimeLocal"
+        ></synctime>
+      </div>
+    </div>
+  </div>
+  <div
+    class="form-group"
+    v-show="changed"
+  >
+    <a
+      href="#"
+      class="btn btn-primary btn-lg btn--fixed mr-2"
+      @click="submitChanges"
+    >Сохранить</a>
+  </div>
+</div>
+</script>
+
+<script>
+const Sync = Vue.extend({
+  template: '#sync-settings-template',
+  delimiters: ['[[', ']]'],
+  components: {
+    synctime: SyncTime
+  },
+
+  data() {
+    return {
+      globalUrl: '',
+      period: 0,
+      syncBySchedule: false,
+      schedule: [],
+      changed: false,
+      queue: new Set(),
+      loading: true
+    }
+  },
+
+  methods: {
+    showSubmit: function() {
+      this.changed = this.globalUrl.length > 0 && this.period > 0;
+    },
+
+    changeSetting: function(url, values) {
+      const request = axios.put(
+        url,
+        values
+      );
+
+      return request.then(response => {
+        response
+      }).catch(error => handleError(
+        error,
+        undefined,
+        (() => {
+          return Promise.reject(error);
+        })
+      ));
+    },
+
+    changeAddress: function() {
+      return this.changeSetting(
+        'setting/1',
+        {
+          value: this.globalUrl
+        }
+      );
+    },
+
+    changePeriod: function() {
+      return this.changeSetting(
+        'setting/2',
+        {
+          value: this.period
+        }
+      );
+    },
+
+    changeSynctype: function() {
+      return this.changeSetting(
+        'synctype/1',
+        {
+          enabled: this.syncBySchedule
+        }
+      );
+    },
+
+    changeSynctimes: function() {
+      if (!this.syncBySchedule) {
+        return;
+      }
+
+      const times = [];
+
+      for (const synctime of this.schedule) {
+        if (synctime.deleted) {
+          times.push(this.deleteSynctime(synctime));
+        } else if (synctime.id < 0 && synctime.time.length > 0) {
+          times.push(this.saveSynctime(synctime));
+        } else if (synctime.time.length > 0) {
+          times.push(this.changeSynctime(synctime));
+        }
+      }
+      return Promise.all(times);
+    },
+
+    deleteSynctime: function(item) {
+      const request = axios.delete(`syncschedule/${item.id}`);
+
+      return request.then(response => {
+        response
+      }).catch(error => handleError(
+        error,
+        undefined,
+        (() => {
+          return Promise.reject(error);
+        })
+      ));
+    },
+
+    saveSynctime: function(item) {
+      const request = axios.post('syncschedule/', {time: item.time});
+
+      return request.then(response => {
+        response
+      }).catch(error => handleError(
+        error,
+        undefined,
+        (() => {
+          return Promise.reject(error);
+        })
+      ));
+    },
+
+    changeSynctime: function(item) {
+      const request = axios.put(`syncschedule/${item.id}`, {time: item.time});
+
+      return request.then(response => {
+        response
+      }).catch(error => handleError(
+        error,
+        undefined,
+        (() => {
+          return Promise.reject(error);
+        })
+      ));
+    },
+
+    handleChanges: function(func) {
+      this.queue.add(func);
+      this.showSubmit();
+    },
+
+    submitChanges: async function() {
+        for (const func of this.queue) {
+          await func();
+        }
+        messageSuccess('Изменения успешно применены');
+      this.queue.clear();
+      this.pullData();
+      this.changed = false;
+    },
+
+    getDefaultSynctime: function() {
+      return {
+        // Помечаем несохраненный элемент
+        id: -this.schedule.length - 1,
+        time: '',
+        deleted: false
+      }
+    },
+
+    getSyncSchedule: function() {
+      axios.get(
+        'syncschedule/'
+      ).then(response => {
+        this.schedule = response.data;
+        this.schedule.forEach(synctime => {
+          // Чтобы включить реактивность Vue
+          this.$set(synctime, 'deleted', false);
+        });
+      }).catch(error => handleError(
+        error,
+        'Ошибка! В случае повторения обратитесь в техподдержку.'
+      ));
+    },
+
+    pullData: function() {
+      axios.get(
+        'sync/'
+      ).then(request => {
+        this.globalUrl = request.data.global_url.value;
+        this.period = request.data.period.value;
+        this.syncBySchedule = request.data.sync_type.enabled;
+        this.getSyncSchedule();
+      }).catch(error => handleError(
+        error,
+        'Ошибка! В случае повторения обратитесь в техподдержку.'
+      )).then(() => {
+        this.loading = false;
+      });
+    },
+
+    activeSynctimes: function() {
+      const last = this.schedule.length - 1;
+      if (this.schedule.length == 0 || this.schedule[last].time.length != 0) {
+        this.schedule.push(this.getDefaultSynctime());
+      }
+      return this.schedule.filter(synctime => !synctime.deleted);
+    },
+
+    manageSynctime: function(id, func) {
+      for (const synctime of this.schedule) {
+        if (synctime.id == id) {
+          func(synctime);
+          this.handleChanges(this.changeSynctimes);
+          return;
+        }
+      }
+    },
+
+    deleteSynctimeLocal: function(id) {
+      this.manageSynctime(id, item => {
+        item.deleted = true;
+      });
+    },
+
+    changeSynctimeLocal: function(newData) {
+      this.manageSynctime(newData.id, item => {
+        item.time = newData.time;
+      });
+    },
+  },
+
+  mounted: function() {
+    this.pullData();
+  }
+});
+new Sync().$mount('#sync');
+</script>

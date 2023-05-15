@@ -1,0 +1,184 @@
+{% extends "mc/base.html" %}
+{% load staticfiles %}
+
+{% block title %}Opteo{% endblock %}
+
+{% block extra-top %}
+<link href="{% static 'mc/js/lib/dropzone/dropzone.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block active-index %}active{% endblock %}
+
+{% block content %}
+<video id="video_checker" style="display: none"></video>
+<div class="company-block border-dark border-bottom">
+  <div class="company">
+    <div class="company__logo mr-4" style="background-image: url({{ logo_url }})"></div>
+    <div class="company__info">
+      <div class="company__name">{{ ent_name }}</div>
+      <div class="company__address">{{ ent_address }}</div>
+    </div>
+  </div>
+  <div class="top-loader" style="display: none;">
+    <span id="info_stage_1" style="display: none;">
+      Копирование файлов...
+    </span>
+    <span id="info_stage_2" style="display: none;">
+      Применение параметров...
+    </span>
+    <div class="lds-facebook">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+  <div>
+    <div class="btn btn-primary apply hidden" id="main_apl_btn" title="Загрузка медиа-файлов на устройства и запуск новых плейлистов">Сохранить изменения</div>
+    <span data-toggle="modal" data-target="#monitor" class="btn btn-secondary">Время работы мониторов</span>
+    <div class="btn btn-secondary reboot_btn">Перезагрузка</div>
+  </div>
+</div>
+<main class="pl-4" id="scroll">
+  <div class="screens-outer">
+    <div class="screens mt-4" id="monitor_list">
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block extra-bottom %}
+{% include 'mc/index/week.html' %}
+{% include 'mc/index/radio.html' %}
+{% include "mc/index/model_templates.html" %}
+<script src="{% static 'mc/js/lib/dropzone/dropzone.js' %}"></script>
+<script src="{% static 'mc/js/index.js' %}"></script>
+<script src="{% static 'mc/js/models/item.js' %}"></script>
+<script src="{% static 'mc/js/models/playlist.js' %}"></script>
+<script src="{% static 'mc/js/models/monitor.js' %}"></script>
+<script src="{% static 'mc/js/collections/items_col.js' %}"></script>
+<script src="{% static 'mc/js/collections/playlists_col.js' %}"></script>
+<script src="{% static 'mc/js/collections/monitors_col.js' %}"></script>
+<script src="{% static 'mc/js/views/item_view.js' %}"></script>
+<script src="{% static 'mc/js/views/playlist_view.js' %}"></script>
+<script src="{% static 'mc/js/views/monitor_view.js' %}"></script>
+<script src="{% static 'mc/js/views/monitor_list_view.js' %}"></script>
+<script src="{% static 'mc/js/saved_urls.js' %}"></script>
+<script src="{% static 'mc/js/header.js' %}"></script>
+<script>
+if (!checkArrows()) {
+  replaceWithWarning('scroll');
+}
+
+const MAX_MEDIA_SIZE = {{ max_media_size }};
+
+($ => {
+  //создаем главный объект
+  app.MLV = new app.MonitorListView({collection: app.monitors});
+
+  //подготовленные данные
+  var monitors = {{ all_monitors|safe }};
+  var playlists = {{ all_playlists|safe }};
+  var pics = {{ all_items|safe }};
+
+  //наполняем объекты данными
+  app.monitors.reset(monitors);
+  app.playlists.reset(playlists);
+  app.pics.reset(pics);
+
+  app.prms_array = [];
+  app.mons_updating = 0;
+  app.loadingContent = 0;
+
+
+  const hideNotReady = () => {
+  $.ajax({
+    type: 'POST',
+    url: '/get_time/',
+    success: handleSuccess,
+    error: handleError
+  });
+};
+
+const handleSuccess = (data) => {
+  const currentDate = new Date(data.time);
+  const timeWrapper = moment(currentDate).tz(data.tz);
+
+  const notReady = app.playlists.models.some((pl) => {
+    const lastUpdate = Date.parse(pl.attributes.last_updated);
+    const timeDiffInSeconds = Math.abs((currentDate - lastUpdate) / 1000); // Разница в секундах
+    const maxDiffInSeconds = 60;
+
+    return timeDiffInSeconds <= maxDiffInSeconds;
+  });
+
+  if (notReady) {
+    setTimeout(hideNotReady, 1000);
+  } else {
+    $('.screen').unblock();
+    $('#info_stage_2').hide();
+    $('.top-loader').hide();
+  }
+};
+
+const handleError = () => {
+  $('.screen').unblock();
+  $('#info_stage_2').hide();
+  $('.top-loader').hide();
+  messageError('Не удалось проверить доступность плейлистов');
+};
+
+hideNotReady();
+
+
+
+
+
+  // const hideNotReady = () => {
+  //   $.ajax({
+  //     type: 'POST',
+  //     url: '/get_time/',
+      
+  //     success: data => {
+  //       const currentDate = new Date(data.time);
+  //       const timeWrapper = moment(currentDate).tz(data.tz);
+
+  //       // Проверяем, что хотя бы один плейлист еще не перезапустился
+  //       const notReady = app.playlists.models.some(pl => {
+  //         const lastUpdate = Date.parse(pl.attributes.last_updated);
+
+  //         // Берем модуль, чтобы из-за косяков со временем все не поломалось
+  //         const diff = Math.abs(moment.duration(
+  //           timeWrapper.diff(lastUpdate)
+  //         ).asSeconds());
+
+  //         // Ждем 60 секунд, чтобы джоба в кроне точно успела запуститься
+  //         return diff <= 60;
+  //       });
+
+  //       if (notReady) {
+  //         setTimeout(hideNotReady, 1000);
+  //       } else {
+  //         $('.screen').unblock();
+  //         $('#info_stage_2').hide();
+  //         $('.top-loader').hide();
+  //       }
+  //     },
+
+  //     error: () => {
+  //       // Разблокируем мониторы, если не удалось уточнить время
+  //       $('.screen').unblock();
+  //       $('#info_stage_2').hide();
+  //       $('.top-loader').hide();
+
+  //       messageError('Не удалось проверить доступность плейлистов');
+  //     }
+  //   });
+  // };
+
+  // $('.screen').block({message: null});
+  // $('#info_stage_2').show();
+  // $('.top-loader').show();
+  // hideNotReady();
+})(jQuery);
+</script>
+{% endblock %}

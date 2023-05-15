@@ -1,0 +1,40 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls %}
+{% block after_field_sets %}
+    <script>
+    $('#id_resolution').hide();
+    $('#id_resolution').parent().append('<select id="id_resolution_sel"/>');
+    $('#id_resolution_sel').change(function(){
+        $('#id_resolution').val($('#id_resolution_sel').val());
+    });
+
+    function getResList() {
+        var host_id = $('#id_host').val();
+        var slot_id = $('#id_host_slot').val();
+        $.ajax({
+           type: "POST",
+           url: '/mon_res_list/',
+           data: {'host': host_id, 'slot': slot_id}, // serializes the form's elements.
+           success: function(sdata)
+           {
+               //console.log(sdata); // show response from the php script.
+               var data = JSON.parse(sdata);
+               var $select = $('#id_resolution_sel');
+
+                $select.find('option').remove();
+               $select.append("<option value=''>-----</option>");
+                $.each(data, function(key, value)
+                {
+                    $select.append('<option value=' + value + '>' + value + '</option>');
+                });
+               var cur_val = $('#id_resolution').val();
+                $("#id_resolution_sel [value='"+cur_val+"']").attr("selected", "selected");
+           }
+         });
+    }
+
+    $('#id_host').change(getResList);
+    $('#id_host_slot').change(getResList);
+    getResList();
+    </script>
+{% endblock %}

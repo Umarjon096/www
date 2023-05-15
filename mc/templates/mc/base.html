@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru-RU">
+{% load staticfiles %}
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>
+    {% block title %}Базовый заголовок, который неплохо бы заменить{% endblock %}
+  </title>
+  {% block extra-top %}{% endblock %}
+  <link href="{% static 'mc/js/lib/bootstrap-4.3.1/scss/bootstrap.css' %}" rel="stylesheet">
+  <link href="{% static 'mc/js/lib/perfect-scrollbar/perfect-scrollbar.css' %}" rel="stylesheet">
+  <link href="{% static 'mc/js/lib/jquery-ui-1.12.1/jquery-ui.min.css' %}" rel="stylesheet">
+  <link href="{% static 'mc/js/lib/fancy/jquery.fancybox.min.css' %}" rel="stylesheet">
+  <link href="{% static 'mc/js/lib/jGrowl/jquery.growl.css' %}" rel="stylesheet">
+  <link href="{% static 'mc/css/input.css' %}" rel="stylesheet">
+  <link href="{% static 'mc/css/style.css' %}" rel="stylesheet">
+</head>
+
+<body class="body-index">
+  <div class="wrapper">
+    <aside>
+      <div class="menu">
+        <a href="/" class="menu-item {% block active-index %}{% endblock %}">
+          <i class="icon icon--screen">
+            {% include 'svg/screen.svg' %}
+          </i>
+        </a>
+        <a href="/admin" class="menu-item {% block active-admin %}{% endblock %}">
+          <i class="icon icon--gear">
+            {% include 'svg/gear.svg' %}
+          </i>
+        </a>
+        <a href="/manual" class="menu-item {% block active-manual %}{% endblock %}">
+          <i class="icon icon--info">
+            {% include 'svg/info.svg' %}
+          </i>
+        </a>
+      </div>
+    </aside>
+    <section>
+      <header class="pl-4">
+        <div>
+          <div class="logo">
+            {% include 'svg/logo.svg' %}
+          </div>
+        </div>
+        <div class="text-right d-flex">
+          <div class="header-item">
+            <div class="header-item__title">Версия:</div>
+            {{ version_n_device }}
+          </div>
+          <div class="header-item">
+            <div class="header-item__title">UUID:</div>
+            {{ uuid }}
+          </div>
+          <div class="header-item">
+            <div class="header-item__title">Системное время:</div>
+            <div id="cur_date"></div>
+          </div>
+          <div class="header-item" title="{{ disk_space }}">
+            <div id="space_left" data-space-left="{{ disk_space_left }}" class="header-item__title">Место на диске:</div>
+            <progress class="space" value="{{ disk_space_perc }}" max="100"></progress>
+            {{ disk_space_left_pretty }}
+          </div>
+          <a href="{% url 'logout' %}" class="logout">Выйти из системы</a>
+        </div>
+      </header>
+      {% block content %}{% endblock %}
+    </section>
+  </div>
+  <script src="{% static 'mc/js/lib/jquery-3.4.1.min.js' %}"></script>
+  <script src="{% static 'mc/js/lib/jquery.blockUI.js' %}"></script>
+  <script src="{% static 'mc/js/lib/jquery-ui-1.12.1/jquery-ui.min.js' %}"></script>
+  <script src="{% static 'mc/js/lib/bootstrap-4.3.1/dist/js/bootstrap.min.js' %}"></script>
+  <script src="{% static 'mc/js/lib/perfect-scrollbar/perfect-scrollbar.min.js' %}"></script>
+  <script src="{% static 'mc/js/lib/fancy/jquery.fancybox.min.js' %}"></script>
+  <script src="{% static 'mc/js/lib/jGrowl/jquery.growl.js' %}"></script>
+  <script src="{% static 'mc/js/lib/underscore.js' %}"></script>
+  <script src="{% static 'mc/js/lib/backbone.js' %}"></script>
+  <script src="{% static 'mc/js/lib/jquery.scrollbar.js' %}"></script>
+  <script src="{% static 'mc/js/lib/moment.js' %}"></script>
+  <script src="{% static 'mc/js/lib/moment-timezone-with-data.js' %}"></script>
+  <script src="{% static 'mc/js/base.js' %}"></script>
+  {% block extra-bottom %}{% endblock %}
+</body>
+</html>

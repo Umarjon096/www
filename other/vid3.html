@@ -1,0 +1,361 @@
+<style>
+  body {
+    background-color: black;
+    overflow:hidden;
+    margin: 0px;
+  }
+
+  .vid {
+      object-fit: cover;
+      width: 100%;
+      outline: none;
+      object-fit: cover;
+
+      position: fixed; right: 0; bottom: 0;
+      min-width: 100%; min-height: 100%;
+      width: auto; height: auto; z-index: -100;
+      background-size: cover;
+  }
+
+  .alert {
+    position: fixed;
+    z-index: 100;
+    top: 10%;
+    left: 10%;
+    color: white;
+    font-size: xxx-large;
+  }
+
+  .rotate90{
+      /* transform: rotate(90deg);
+      transform-origin:bottom left; 
+      top: -100vw;
+      left: 0px;*/
+  }
+
+  .rotate180{
+      transform: rotate(180deg);
+      transform-origin: center center;
+  }
+
+  .rotate270{
+      /* transform: rotate(270deg);
+      transform-origin:top left; 
+      top: 100vw;
+      left: 0px; */
+  }
+
+  /*#img {
+    position: fixed;  
+    top: 0; 
+    left: 0; 
+    min-width: 100%;
+    min-height: 100%;
+  }*/
+
+  .rotate270 img {
+      position: fixed;
+      right: 100%;
+      top: 0;
+      transform: rotate(270deg);
+      transform-origin: top right;
+  }
+
+  .rotate90 img {
+      position: fixed;
+      left: 100%;
+      transform: rotate(90deg);
+      transform-origin: top left;
+  }
+
+  .rotate90 .vid {
+      position: fixed;
+      right: 100%;
+      transform: rotate(90deg);
+      transform-origin: bottom right;
+  }
+
+  .rotate270 .vid {
+      position: fixed;
+      right: 100%;
+      top: 0;
+      transform: rotate(270deg);
+      transform-origin: top right;
+  }
+</style>
+<div class="wrapper">
+<video class="vid" id="vid" style="display:none"></video>
+<!-- <video class="vid" id="vid2" style="display:none" muted></video> -->
+<img class="img" id="img" style="display:none"></img>
+</div>
+<script>
+let videos = [];
+let cur_vid_idx = 0;
+let videoPlayer = document.getElementById('vid');
+let videoPlayer2 = document.getElementById('vid2');
+
+let curPlayer = videoPlayer;
+let nextPlayer = videoPlayer2;
+//let FILE_PATH = 'http://localhost:3000/static/chromi/';
+let FILE_PATH = 'file:///var/www/static/chromi/';
+//let LOCALHOST = 'http://localhost:3000';
+let LOCALHOST = 'http://127.0.0.1'
+let START_TIME = new Date();
+let END_TIME;
+let SUM_DUR = 0;
+let MEDIA_DURS = {};
+let MEDIA_ARR = [];
+let ROTATE = 0;
+let INTERVAL = 10;
+let IP = ''; //а также это у нас признак блэкскрина
+let G_TIMER;
+
+class MediaPlayer {
+  constructor(media, interval) {
+    this._interval = interval*1000;
+    this.vidP1 = document.getElementById('vid');
+    //this.vidP2 = document.getElementById('vid2');
+    this.imgP = document.getElementById('img');
+    this.currentVidP = this.vidP1;
+    this.nextVidReady = false;
+    this.media = media;
+    this.cur_vid_idx = -1;
+    this.vidP1.onended = /*this.vidP2.onended = */ ()=>{
+        //console.log(this.currentVidP);
+        //this.playNext();
+      }
+
+  }
+
+  get interval() {
+    return this._interval;
+  }
+
+  handleMedia() {
+    return undefined;
+  }
+
+  nextMedia(){
+    
+    if (this.cur_vid_idx < this.media.length - 1){
+      this.cur_vid_idx += 1;
+    }
+    else {
+      this.cur_vid_idx = 0;
+    }
+    //console.log(this.cur_vid_idx);
+    return this.media[this.cur_vid_idx];
+  }
+
+
+  nextMediaJustRead(){
+    let cur_idx = this.cur_vid_idx;
+    if (cur_idx < this.media.length - 1){
+      cur_idx += 1;
+    }
+    else {
+      cur_idx = 0;
+    }
+    //console.log(this.cur_vid_idx);
+    return this.media[cur_idx];
+  }
+
+  sendMediaName(file_name){
+    let data_to_send = {
+      fname: file_name
+    };
+    fetch(LOCALHOST+'/send_media_name/', {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json;charset=utf-8'
+      },
+      body: JSON.stringify(data_to_send)
+    }).then((response) => {
+      //console.log(response);
+    });
+  }
+
+  hideAll(){
+    this.vidP1.style.display = 'none';
+    //this.vidP2.style.display = 'none';
+    this.imgP.style.display = 'none';
+  }
+
+  playVideo(src, next_player){
+    currentVidP.play();
+  }
+
+  playImage(){
+    //console.log('start play image');
+    //setTimeout(() => {this.playNext()}, this._interval);
+    //console.log('end play image');
+  }
+
+
+
+  playNext(idx_set){
+    let nextMedia = undefined;
+    if (!idx_set)
+      nextMedia = this.nextMedia();
+    else
+      nextMedia = this.media[this.cur_vid_idx];
+
+    let nextnextMedia = this.nextMediaJustRead();
+    let outer_this = this;
+
+    //console.log('NM', nextMedia.name);
+    if (nextMedia.type == 'vid')
+    {
+      this.imgP.style.display = 'none';
+      if (!this.nextVidReady)
+      {
+        this.currentVidP.src = FILE_PATH+nextMedia.name;
+        //this.nextVidReady = false;
+      }
+        
+      if (videos.length == 1)
+        this.currentVidP.loop = true;
+      this.currentVidP.style.display = '';
+      this.currentVidP.play();
+      
+
+      
+      if(nextMedia.type == 'vid' && nextnextMedia.type == 'img')
+      this.imgP.onload = function () {
+        this.style.display = '';
+        outer_this.currentVidP.style.display = 'none';
+        this.onload = null;
+      }
+      // //console.log('NNM', nextnextMedia);
+      // if (nextnextMedia.type == 'vid') 
+      // {
+      //   this.currentVidP = (this.currentVidP == this.vidP1) ? this.vidP2 : this.vidP1;
+      //   this.currentVidP.src = FILE_PATH+nextnextMedia.name;
+      //   this.currentVidP.load();
+      //   this.nextVidReady = true;
+      // }
+    }
+    else if (nextMedia.type == 'img')
+    {
+      if (this.imgP.style.display != '' && this.imgP.onload == null)
+        {
+          this.imgP.style.display = '';
+          this.currentVidP.style.display = 'none';
+        }
+      this.imgP.src = FILE_PATH+nextMedia.name;
+      //this.nextVidReady = false;
+      this.playImage();
+    }
+    this.sendMediaName(nextMedia.name);
+    
+    
+  
+  }
+}
+
+
+
+fetch(LOCALHOST+'/static/chromi/playlist?'+Math.floor(Date.now() / 1000))
+  .then((response) => {
+    return response.json();
+  })
+  .then((data) => {
+    parsePlaylist(data);
+  })
+  .then(()=>{
+    const mplayer = new MediaPlayer(videos, INTERVAL);
+    //mplayer.playNext();
+    G_TIMER = setInterval(() => mediaSentinel(mplayer), 100);
+  });
+
+function mediaSentinel(mplayer){
+  let cur_idx = getCurrentMedia();
+  if (mplayer.cur_vid_idx != cur_idx)
+  {
+    mplayer.cur_vid_idx = cur_idx;
+    mplayer.playNext(true);
+  }
+}
+
+function parsePlaylist(playlist){
+  let files = playlist.files;
+  SUM_DUR = playlist.files.reduce((a, b) => a + b.duration*1000, 0);
+  ROTATE = playlist.rotation;
+  INTERVAL = parseInt(playlist.interval);
+  START_TIME = Date.parse(playlist.start_time);
+  END_TIME = START_TIME + SUM_DUR;
+  if (playlist.blackscreen)
+  {
+    fetch(LOCALHOST+'/static/chromi/_ip')
+    .then((response)=>{
+      response.text().then(x => {
+        IP = x;
+        let div = document.createElement('div');
+        div.className = "alert";
+        div.innerHTML = "<strong>IP: </strong>"+IP;
+        document.body.append(div);
+      });
+      
+    })
+  }
+  applyRotate();
+
+  for (let file of files){
+      if(file.type == 'url')
+      {
+        var href=file.name;
+        document.location.href = href;
+      }
+      videos.push(file);
+  }
+  adjustSchedule(videos);
+}
+
+function adjustSchedule(files){
+  let cur_date = new Date().getTime();
+  let end_date = START_TIME;
+  while (cur_date > end_date) {
+    end_date += SUM_DUR;
+  }
+  END_TIME = end_date;
+  START_TIME = end_date - SUM_DUR;
+  //console.log('NST', START_TIME);
+  MEDIA_ARR = [];
+  let media_start_time = START_TIME;
+  for (let file of files){
+    MEDIA_DURS[file.name] = media_start_time;
+    media_start_time += file.duration*1000;
+    MEDIA_ARR.push([file.name, media_start_time])
+  }
+  //console.log('MD', MEDIA_DURS);
+  //console.log('MA', MEDIA_ARR);
+}
+
+function getCurrentMedia(){
+  let cur_date = new Date().getTime();
+  if (cur_date >= END_TIME)
+    adjustSchedule(videos);
+  let idx = 0;
+  for (let media of MEDIA_ARR){
+    if (cur_date < media[1]) {
+      //console.log('CUR M:', media[0]);
+      return idx;
+    }
+    idx += 1;
+  }
+  return idx;
+}
+
+function applyRotate(){
+  if (ROTATE == 90) {
+    document.querySelector('.wrapper').classList.add("rotate90");
+  }
+  else if (ROTATE==180) {
+    document.querySelector('.wrapper').classList.add("rotate180");
+  }
+  else if (ROTATE==270) {
+    document.querySelector('.wrapper').classList.add("rotate270");
+  }
+}
+</script>

@@ -1,0 +1,18 @@
+rw # Read-write
+
+sudo apt update
+sudo apt upgrade
+python3 --version
+sudo apt-get install python3-opencv
+pip3 install django==1.11.29
+
+sudo apt install samba
+/etc/init.d# service smbd start
+
+# windows cmd --> net use Z: \\172.16.25.194\var --> root --> Little0pte0
+
+# change date time
+sudo date -s "2023-05-12 19:41:00"
+
+
+ro # Read-only

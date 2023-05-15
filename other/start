@@ -1,0 +1,1 @@
+xinit /home/starko/kiosk_self -- vt$(fgconsole) > /dev/null 2>&1

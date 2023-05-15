@@ -1,0 +1,252 @@
+<script type="text/x-template" id="license-settings-template">
+<div class="pt-4 pl-2 pr-4 pb-4">
+  <h1 class="mb-4 pb-4">Лицензии</h1>
+  <div
+    class="top-loader"
+    v-if="loading"
+  >
+    <div>Идёт загрузка...</div>
+    <div class="lds-facebook">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-6">
+      <h3 div class="h3-sign">
+        [[license ? 'Лицензия активирована': 'Недействительный ключ']]
+      </h3>
+      <div class="form-group">
+        <label class="col-form-label">Лицензионный ключ</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="key"
+          @input="showSubmit(changeKey)"
+        >
+      </div>
+      <div class="row col-12">
+        Для активации панели управления устройствами, необходимо ввести лицензионный ключ.
+      </div>
+      <div class="row col-12">
+        Получить лицензионный ключ можно у представителя ООО "НТЦ "СтарКо", сообщив ему уникальный идентификатор:
+      </div>
+      <div class="form-group">
+        <label class="col-form-label">
+          UUID устройства
+        </label>
+        <input
+          type="text"
+          class="form-control mb-3 disabled"
+          v-model.trim="uuid"
+          readonly
+        >
+        <span
+          class="btn btn-secondary"
+          v-clipboard:copy="uuid"
+          v-clipboard:success="copied"
+        >Копировать в буфер обмена</span>
+      </div>
+      <div class="form-group">
+        <label class="col-form-label">Аккаунт на Opteo.pro (email)</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="email"
+          @input="showSubmit(changeEmail)"
+        >
+      </div>
+      <div class="row col-12">
+        Для просмотра и управления этим устройством через портал Opteo.pro, необходимо указать свой логин.
+      </div>
+      <div class="row col-12">
+        Для получения логина обратитесь к представителю ООО "НТЦ "СтарКо".
+      </div>
+      <div
+        class="form-group"
+        v-show="changed"
+      >
+        <a
+          href="#"
+          class="btn btn-primary btn-lg btn--fixed mr-2"
+          @click="submitChanges"
+        >Сохранить</a>
+      </div>
+    </div>
+    <div class="col-6">
+      <div class="form-group">
+        <label class="col-form-label">Файл лицензий</label>
+        <div class="row align-items-center">
+          <div class="col-4">
+            <a href="/multiple_key/" class="btn btn-secondary">Скачать список uuid</a>
+          </div>
+          <div class="col-6">
+            <div
+              class="custom-file"
+              :class="{'under-load': file.upload}"
+            >
+              <input
+                type="file"
+                accept=".csv"
+                class="custom-file-input"
+                id="licenseFile"
+                @input="uploadLicenses"
+              >
+              <label class="custom-file-label text-truncate" for="licenseFile">Загрузить файл</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</script>
+
+<script>
+const License = Vue.extend({
+  template: '#license-settings-template',
+  delimiters: ['[[', ']]'],
+
+  data() {
+    return {
+      changed: false,
+      uuid: '',
+      license: false,
+      key: '',
+      email: '',
+      queue: new Set(),
+      file: {
+        upload: false
+      },
+      loading: true
+    }
+  },
+
+  methods: {
+    pullData: function() {
+      axios.get(
+        'license/'
+      ).then(response => {
+        this.uuid = response.data.uuid;
+        this.license = response.data.key_license.license;
+        this.key = response.data.key_license.key;
+        this.email = response.data.reg_email.value;
+      }).catch(error => handleError(
+        error,
+        'Ошибка! В случае повторения обратитесь в техподдержку.'
+      )).then(() => {
+        this.loading = false;
+      });
+    },
+
+    copied: function() {
+      messageSuccess('UUID скопирован в буфер обмена');
+    },
+
+    showSubmit: function(func) {
+      this.changed = this.key.length > 0 || this.email.length > 0;
+      this.queue.add(func);
+    },
+
+    submitChanges: function() {
+      const results = [];
+      for (func of this.queue) {
+        results.push(func());
+      }
+
+      Promise.allSettled(results).then(() => {
+        this.changed = false;
+        this.queue.clear();
+      });
+    },
+
+    changeKey: function() {
+      if (this.key.length == 0) {
+        alert('Лицензионный ключ пуст');
+        return Promise.reject();
+      }
+
+      const request = axios.post('/key_license/', this.key);
+
+      return request.then(response => {
+        messageSuccess('Лицензионный ключ успешно обновлён');
+        this.license = response.data.licence;
+        this.key = response.data.key;
+        return response;
+      }).catch(error => handleError(
+        error,
+        'Не удалось обновить лицензионный ключ',
+        (() => {
+          return Promise.reject(error);
+        })
+      ));
+    },
+
+    changeEmail: function() {
+      if (this.email.length == 0) {
+        alert('Email пуст');
+        return Promise.reject();
+      }
+
+      const request = axios.put(
+        'setting/7',
+        {
+          code: 'reg_email',
+          id: 7,
+          value: this.email
+        }
+      );
+
+      return request.then(response => {
+        messageSuccess('Аккаунт успешно обновлён');
+        return response;
+      }).catch(error => handleError(
+        error,
+        'Не удалось обновить информацию об аккаунте',
+        (() => {
+          return Promise.reject(error);
+        })
+      ));
+    },
+
+    isCsv: function(text) {
+      // TODO
+      return true;
+    },
+
+    uploadLicenses: async function() {
+      const file = ($('#licenseFile'))[0].files[0];
+      const text = await new Response(file).text();
+
+      if (file.type !== 'text/csv') {
+        alert('Некорректный тип файла');
+      }
+
+      if (!this.isCsv(text)) {
+        alert('Некорректный CSV');
+      }
+
+      this.file.upload = true;
+      axios.post(
+        '/multiple_key/',
+        text
+      ).then(response => {
+        this.file.upload = false;
+        messageSuccess('Лицензии успешно обновлены');
+      }).catch(error => handleError(
+        error,
+        'Не удалось применить лицензии',
+        (() => {
+          this.file.upload = false;
+        })
+      ));
+    }
+  },
+
+  mounted: function() {
+    this.pullData();
+  }
+});
+new License().$mount('#license');
+</script>

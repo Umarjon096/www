@@ -1,0 +1,28 @@
+.patch_upload {
+	outline: 1px solid white;
+	color: white;
+	background-color: #007EB5;
+	padding: 5px;
+	text-align: center;
+}
+
+form {
+	width: 500px;
+	outline: 1px solid white;
+}
+
+.file_upload {
+	margin: 0 auto;
+	display: block;
+	width: 480px;
+	padding: 10px;
+}
+
+progress {
+	margin-left: 10px;
+	width: 380px;
+}
+
+input[name="patch_btn"] {
+	margin: 10px;
+}

@@ -1,0 +1,4 @@
+$.jGrowl("Sticky notifications don't have an end of life", { sticky: true });
+
+				$.jGrowl(text, {header: 'Header', theme:  'success'});
+				$.jGrowl(text, {header: 'Header', theme:  'error'});

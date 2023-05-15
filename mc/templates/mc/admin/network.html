@@ -1,0 +1,613 @@
+<div class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" id="wifi-list">
+  <div id="wifi-list-mount"></div>
+</div>
+
+<script type="text/x-template" id="wifi-list-template">
+<div class="modal-dialog modal-sm" role="document">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h4 class="modal-title border-bottom-0">Выберите точку доступа</h4>
+      <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+    <div
+      class="modal-body"
+      data-dismiss="modal"
+      v-if="wifiList.length > 0"
+    >
+      <div
+        class="wifi-elem"
+        v-for="wifi in wifiList"
+        :key="wifi.key"
+        @click="handleButtonClick(wifi.ssid)"
+      >
+        <div class="wifi-ssid">[[wifi.ssid]]</div>
+        <div class="wifi-quality">[[wifi.quality]]%</div>
+      </div>
+    </div>
+    <div
+      class="modal-body"
+      data-dismiss="modal"
+      v-else
+    >Поиск...</div>
+    <div class="modal-footer center-buttons">
+      <button
+        type="button"
+        class="btn btn-primary"
+        @click="refreshWifi"
+      >Обновить</button>
+    </div>
+  </div>
+</div>
+</script>
+
+<script>
+const WifiListModal = Vue.extend({
+  template: '#wifi-list-template',
+  delimiters: ['[[', ']]'],
+
+  data: function() {
+    return {
+      current: '',
+      refresh: '',
+      wifiList: []
+    }
+  },
+
+  methods: {
+    handleButtonClick: function(current) {
+      this.current = current;
+    },
+
+    refreshWifi: function() {
+      this.refresh = !this.refresh;
+      this.wifiList = [];
+    }
+  },
+
+  mounted: function() {
+    this.$on('listSent', wifiData => {
+      this.wifiList = wifiData;
+    });
+  }
+});
+</script>
+
+<script type="text/x-template" id="network-settings-template">
+<div class="pt-4 pl-2 pr-4 pb-4">
+  <h1 class="mb-4 pb-4">Конфигурация сети</h1>
+  <div
+    class="top-loader"
+    v-if="loading"
+  >
+    <div>Идёт загрузка...</div>
+    <div class="lds-facebook">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-6">
+      <div class="form-group">
+        <label class="col-form-label">Имя устройства</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="hostname"
+          @input="processNonIp($event)"
+        >
+      </div>
+      <div class="form-group">
+        <label class="col-form-label">MAC ethernet</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="ethMac"
+          disabled
+        >
+      </div>
+      <div class="form-group d-flex justify-content-between align-items-center">
+        <label for="dhcpSwitch">DHCP</label>
+        <div class="custom-control custom-switch">
+          <input
+            type="checkbox"
+            class="custom-control-input"
+            id="dhcpSwitch"
+            v-model="dhcp"
+            @change="showSubmit"
+          >
+          <label class="custom-control-label" for="dhcpSwitch"></label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="col-form-label">IP адрес устройства</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="ip"
+          @input="processIp($event)"
+          :disabled="dhcp"
+        >
+      </div>
+      <div class="form-group">
+        <label class="col-form-label">Маска подсети</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="mask"
+          @input="processIp($event)"
+          :disabled="dhcp"
+        >
+      </div>
+      <div class="form-group">
+        <label class="col-form-label">Адрес шлюза</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="gateway"
+          @input="processIp($event)"
+          :disabled="dhcp"
+        >
+      </div>
+      <div class="form-group">
+        <label class="col-form-label">Первичный DNS сервер</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="dnsPrimary"
+          @input="processIp($event)"
+        >
+      </div>
+      <div class="form-group">
+        <label class="col-form-label">Вторичный DNS сервер</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="dnsSecondary"
+          @input="processIp($event)"
+        >
+      </div>
+          <div class="form-group" v-show="changed">
+        <a
+          href="#"
+          class="btn btn-primary btn-lg btn--fixed mr-2"
+          @click="submitForm"
+        >Сохранить</a>
+      </div>
+    </div>
+    <div class="col-5 pl-5 pt-5">
+      <div class="form-group d-flex justify-content-between align-items-center">
+        <label for="wifiSwitch">Беспроводная сеть Wi-fi</label>
+        <div class="custom-control custom-switch">
+          <input
+            type="checkbox"
+            class="custom-control-input"
+            id="wifiSwitch"
+            v-model="wifi"
+            @change="handleWifi"
+          >
+          <label class="custom-control-label" for="wifiSwitch"></label>
+        </div>
+      </div>
+      <div
+        v-show="wifi"
+      >
+        <h3
+          class="h3-sign"
+          :class="{'under-load': wifiUploading}"
+        >[[wifiStatus]]</h3>
+        <div class="form-group">
+          <div class="row center-buttons">
+            <a
+              href="#"
+              class="btn btn-secondary btn-lg"
+              data-toggle="modal"
+              data-target="#wifi-list"
+              ref="wifiBtn"
+              @click="prepareWifis"
+            >Выбрать сеть</a>
+          </div>
+        </div>
+        <div
+          class="form-group"
+        >
+          <label class="col-form-label">Имя сети (SSID)</label>
+          <input
+            type="text"
+            class="form-control"
+            v-model.trim="wifiName"
+            @input="processNonIp($event)"
+          >
+        </div>
+        <div
+          class="form-group"
+        >
+          <label class="col-form-label">Пароль</label>
+          <div class="inner-addon right-addon">
+            <i
+              class="icon"
+              @mouseover="show = true;"
+              @mouseleave="show = false;"
+            >
+              {% include 'svg/eye.svg' %}
+            </i>
+            <input
+              :type="show ? 'text' : 'password'"
+              class="form-control"
+              v-model.trim="wifiPsk"
+              @input="processNonIp($event)"
+            >
+          </div>
+        </div>
+        <div
+          class="form-group justify-content-between align-items-center"
+          style="display:flex;"
+        >
+          <label for="wifiDhcpSwitch">WIFI DHCP</label>
+          <div class="custom-control custom-switch">
+            <input
+              type="checkbox"
+              class="custom-control-input"
+              id="wifiDhcpSwitch"
+              v-model="wifiDhcp"
+              @change="showSubmit"
+            >
+            <label class="custom-control-label" for="wifiDhcpSwitch"></label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-form-label">MAC WiFi</label>
+          <input
+            type="text"
+            class="form-control"
+            v-model.trim="wlanMac"
+            disabled
+          >
+        </div>
+        <div
+          class="form-group"
+        >
+          <label class="col-form-label">IP адрес WIFI</label>
+          <input
+            type="text"
+            class="form-control"
+            v-model.trim="wifiIp"
+            @input="processIp($event)"
+            :disabled="wifiDhcp"
+          >
+        </div>
+        <div
+          class="form-group"
+        >
+          <label class="col-form-label">Маска WIFI</label>
+          <input
+            type="text"
+            class="form-control"
+            v-model.trim="wifiMask"
+            @input="processIp($event)"
+            :disabled="wifiDhcp"
+          >
+        </div>
+        <div
+          class="form-group"
+        >
+          <label class="col-form-label">Адрес шлюза WIFI</label>
+          <input
+            type="text"
+            class="form-control"
+            v-model.trim="wifiGateway"
+            @input="processIp($event)"
+            :disabled="wifiDhcp"
+          >
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</script>
+
+<script>
+const Network = Vue.extend({
+  template: '#network-settings-template',
+  delimiters: ['[[', ']]'],
+
+  data() {
+    return {
+      dhcp: false,
+      hostname: '',
+      ip: '',
+      mask: '',
+      gateway: '',
+      wifiPsk: '',
+      wifiIp: '',
+      wifiMask: '',
+      wifiGateway: '',
+      dnsPrimary: '',
+      dnsSecondary: '',
+      wifiName: '',
+      wifi: false,
+      wifiDhcp: false,
+      wifiConnected: false,
+      wifiList: [],
+      ethMac: '',
+      wlanMac: '',
+      changed: false,
+      wifiQuality: 0,
+      wifiUploading: false,
+      wifiModal: undefined,
+      show: false,
+      loading: true
+    }
+  },
+
+  methods: {
+    handleWifi: function() {
+      if (this.wifi) {
+        this.$refs.wifiBtn.click();
+      }
+      this.showSubmit();
+    },
+
+    prepareWifis: function() {
+      if (this.wifiList.length == 0) {
+        Promise.allSettled([this.refreshWifi()]);
+      } else {
+        this.wifiModal.$emit('listSent', this.wifiList);
+      }
+    },
+
+    refreshWifi: function() {
+      this.wifiName = '';
+      this.wifiUploading = true;
+
+      // Получаем данные о них по очереди, чтобы wlan0 успел освободиться
+       return this.getWifiList().then(() => {
+        this.getWifiStatus().then(() => {
+          this.wifiUploading = false;
+          this.wifiModal.$emit('listSent', this.wifiList);
+        })
+      });
+    },
+
+    convertToPercent: function(string) {
+      if (typeof string === 'undefined') {
+        return 0;
+      }
+
+      const quality = string.split('/');
+      return Math.round(parseInt(quality[0]) / parseInt(quality[1]) * 100);
+    },
+
+    getWifiList: function() {
+      this.wifiList = [];
+      const request = axios.get(
+        '/wifi_scan/'
+      );
+
+      return request.then(response => {
+        for (let i = 0; i < response.data.length; i++) {
+          const spot = response.data[i];
+          this.wifiList.push({
+            'key': i,
+            'ssid': spot.ssid,
+            'quality': this.convertToPercent(spot.quality)
+          });
+        }
+
+        // Сортируем массив по убыванию качества
+        this.wifiList.sort((a, b) => a.quality - b.quality);
+      }).catch(error => handleError(
+        error,
+        'Не удалось получить список доступных Wifi'
+      ));
+    },
+
+    getWifiStatus: function() {
+      const request = axios.get(
+        '/wifi_quality/'
+      );
+
+      return request
+        .then(response => {
+          this.wifiQuality = this.convertToPercent(response.data.quality);
+        }).catch(error => handleError(
+          error,
+          'Не удалось получить данные о состоянии WIFI',
+          (() => {
+            this.wifiQuality = 0;
+          })
+        ));
+    },
+
+    getNetworkData: function() {
+      axios.get(
+        'network'
+      ).then(response => {
+        this.dhcp = response.data.dhcp;
+        this.hostname = this.cleanString(response.data.hostname);
+        this.ip = this.cleanString(response.data.ip);
+        this.mask = this.cleanString(response.data.mask);
+        this.gateway = this.cleanString(response.data.gateway);
+        this.wifiPsk = this.cleanString(response.data.wlan_psk);
+        this.wifiIp = this.cleanString(response.data.wlan_ip);
+        this.wifiMask = this.cleanString(response.data.wlan_mask);
+        this.wifiGateway = this.cleanString(response.data.wlan_gateway);
+        this.dnsPrimary = this.cleanString(response.data.dns_primary);
+        this.dnsSecondary = this.cleanString(response.data.dns_secondary);
+        this.wifiName = this.cleanString(response.data.wlan_name);
+        this.ethMac = this.cleanString(response.data.mac_eth);
+        this.wlanMac = this.cleanString(response.data.mac_wlan);
+        this.wifi = response.data.wlan;
+        this.wifiConnected = this.wifi;
+        this.wifiDhcp = response.data.wlan_dhcp;
+      }).catch(error => handleError(
+        error,
+        'Ошибка! В случае повторения обратитесь в техподдержку.'
+      )).then(() => {
+        this.loading = false;
+      });
+    },
+
+    markValid: function(element) {
+      element.classList.remove('error-glow');
+      element.setAttribute('title', '');
+    },
+
+    markInvalid: function(element, errorTitle) {
+      element.classList.add('error-glow');
+      element.setAttribute('title', errorTitle);
+    },
+
+    processIp: function(event) {
+      this.showSubmit();
+      const text = event.target.value;
+      if (this.isIp(text)) {
+        this.markValid(event.target);
+      } else {
+        this.markInvalid(event.target, 'Некорректный адрес');
+      }
+    },
+
+    processNonIp: function(event) {
+      this.showSubmit();
+      const text = event.target.value;
+      if (this.isValid(text)) {
+        this.markValid(event.target);
+      } else {
+        this.markInvalid(event.target, 'Некорректное значение');
+      }
+    },
+
+    showSubmit: function() {
+      this.changed = this.validateFields();
+    },
+
+    hideSubmit: function() {
+      this.changed = false;
+    },
+
+    isIp: function(text) {
+      const ipRegex = new RegExp([
+        /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\./
+        ,/(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\./
+        ,/(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\./
+        ,/(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
+      ].map(r => r.source).join(''));
+      return ipRegex.test(text);
+    },
+
+    isValid: function(string) {
+      // Проверяем, что строка существует, непустая и не состоит из пробелов
+      return !(!string || string.length === 0 || !string.trim());
+    },
+
+    validateFields: function() {
+      let allValid = this.isValid(this.hostname)
+        && (this.isIp(this.dnsPrimary) || this.dnsPrimary.length == 0)
+        && (this.isIp(this.dnsSecondary) || this.dnsSecondary.length == 0);
+
+      if (!this.dhcp) {
+        allValid = allValid
+          && this.isIp(this.ip)
+          && this.isIp(this.mask)
+          && this.isIp(this.gateway);
+      }
+
+      if (this.wifi) {
+        allValid = allValid
+          && this.isValid(this.wifiName)
+          && this.isValid(this.wifiPsk);
+
+        if (!this.wifiDhcp) {
+          allValid = allValid
+            && this.isIp(this.wifiIp)
+            && this.isIp(this.wifiMask)
+            && this.isIp(this.wifiGateway);
+        }
+      }
+      return allValid;
+    },
+
+    submitForm: function() {
+      if (this.validateFields()) {
+        this.hideSubmit();
+        const data = `new_hostname=${this.hostname}`
+          + `&eth_dhcp=${+this.dhcp}`
+          + `&new_ip=${this.ip}`
+          + `&new_mask=${this.mask}`
+          + `&new_gateway=${this.gateway}`
+          + `&new_dns1=${this.dnsPrimary}`
+          + `&new_dns2=${this.dnsSecondary}`
+          + `&wifi_switch=${+this.wifi}`
+          + `&wifi_dhcp=${+this.wifiDhcp}`
+          + `&wnew_ssid=${this.wifiName}`
+          + `&wnew_psk=${this.wifiPsk}`
+          + `&wnew_ip=${this.wifiIp}`
+          + `&wnew_mask=${this.wifiMask}`
+          + `&wnew_gateway=${this.wifiGateway}`;
+
+        axios.post(
+          'network/',
+          data
+        ).then(response => {
+          messageSuccess('Настройки сети обновлены');
+          // В случае успеха обновляемся на новом Ip
+          setTimeout(() => {
+            const new_href = window.location.href.replace(
+              window.location.hostname,
+              (this.wifi && this.wifiIp) ? this.wifiIp: this.ip
+            );
+            window.location.replace(new_href);
+          }, 25000);
+        }).catch(error => handleError(
+          error,
+          'Ошибка! В случае повторения обратитесь в техподдержку.'
+        ));
+      } else {
+        messageError('Произошла ошибка. Проверьте введённые значения и попробуйте ещё раз.');
+      }
+    },
+
+    cleanString: function(string) {
+      return string == undefined ? '': string.trim();
+    }
+  },
+
+  computed: {
+    wifiStatus(text) {
+      if (this.wifiConnected) {
+        return `Подключено, уровень: ${this.wifiQuality}%`;
+      } else {
+        return 'Нет подключения';
+      }
+    }
+  },
+
+  /*watch: {
+    wifiDhcp: function(val) {
+      dhcp = !val;
+    },
+    dhcp: function(val) {
+      wifiDhcp = !val;
+    },
+  },*/
+
+  mounted: function() {
+    this.getNetworkData();
+    this.getWifiStatus();
+    this.wifiModal = new WifiListModal();
+    this.wifiModal.$mount('#wifi-list-mount');
+
+    // Получаем выбранный SSID
+    this.wifiModal.$watch('current', newVal => {
+      this.wifiName = newVal;
+    });
+
+    // Слушаем обновление WIFI
+    this.wifiModal.$watch('refresh', () => this.refreshWifi());
+  }
+});
+new Network().$mount('#network');
+</script>

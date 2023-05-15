@@ -1,0 +1,2 @@
+pi ALL=(ALL) NOPASSWD: ALL
+starko ALL=(root) NOPASSWD: /var/starko/cec-menu.sh

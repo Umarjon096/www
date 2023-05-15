@@ -1,0 +1,284 @@
+<script type="text/x-template" id="display-template">
+  <div class="bg-secondary p-4 mr-4 ml-4 device-space">
+    <div class="form-group row align-items-center mb-3">
+      <label class="col-6 col-form-label text-white text-transform-none">Название монитора</label>
+      <div class="col-6">
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="monitor.name"
+          @input="showSubmit"
+        >
+      </div>
+    </div>
+    <div class="form-group row align-items-center mb-3">
+      <label class="col-5 col-form-label text-white text-transform-none">Поворот</label>
+      <div
+        class="display-orientation col-1"
+        :class="orientationClasses[monitor.orientation]"
+      >
+        <div class="display-orientation-text">A</div>
+      </div>
+      <div class="col-6">
+        <select
+          class="custom-select"
+          v-model="monitor.orientation"
+          @input="showSubmit"
+        >
+          <option
+            v-for="orientation in orientations"
+            :value="orientation.value"
+          >[[orientation.title]]</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group row align-items-center mb-3">
+      <label class="col-6 col-form-label text-white text-transform-none">Порт HDMI</label>
+      <div class="col-6">
+        <select
+          class="custom-select"
+          v-model="monitor.host_slot"
+          @inputd="pullDefinitions"
+        >
+          <option value="0">Первый</option>
+          <option
+            value="1"
+            v-if="monitor.nuc_mon"
+          >Второй</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group row align-items-center mb-3">
+      <label class="col-6 col-form-label text-white text-transform-none">Очередность</label>
+      <div class="col-6">
+        <input
+          type="number"
+          class="form-control"
+          v-model.number="monitor.sequence"
+          @input="showSubmit"
+        >
+      </div>
+    </div>
+    <div class="form-group row align-items-center mb-3">
+      <label class="col-6 col-form-label text-white text-transform-none">Разрешение</label>
+      <div class="col-6">
+        <select
+          class="custom-select"
+          :disabled="resolutions.length == 0"
+          v-model="monitor.resolution"
+          @input="showSubmit"
+        >
+          <option
+            v-for="resolution in resolutions"
+            :value="resolution"
+          >[[resolution]]</option>
+        </select>
+      </div>
+    </div>
+    <!--div class="form-group row align-items-center mb-3">
+      <label class="col-6 col-form-label text-white text-transform-none">Группа синхронного проигрывания</label>
+      <div class="col-6">
+        <input
+          type="number"
+          class="form-control"
+          v-model.number="monitor.sync_group"
+          @input="showSubmit"
+        >
+      </div>
+    </div-->
+    <div class="form-group row align-items-center mb-3">
+      <label class="col-6 col-form-label text-white text-transform-none">Вывод аудио</label>
+      <div class="col-6">
+        <select
+          class="custom-select"
+          v-model="monitor.audio_output"
+          @input="showSubmit"
+        >
+          <option
+            v-for="audio in audios"
+            :value="audio.value"
+          >[[audio.title]]</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group row align-items-center mb-0 buttons-center">
+      <a
+        href="#"
+        class="btn btn-primary"
+        @click="submitChanges"
+        v-show="changed"
+      >Сохранить</a>
+      <a
+        href="#"
+        class="btn btn-outline-danger"
+        @click="deleteSelf"
+      >Удалить</a>
+    </div>
+  </div>
+</script>
+
+<script>
+const Display = Vue.extend({
+  template: '#display-template',
+  delimiters: ['[[', ']]'],
+  props: [
+    'monitor'
+  ],
+
+  data() {
+    return {
+      orientations: [{
+        value: 'left',
+        title: 'Повёрнут влево'
+      },
+      {
+        value: 'standard',
+        title: 'Нет'
+      },
+      {
+        value: 'right',
+        title: 'Повёрнут вправо'
+      },
+      {
+        value: 'inverted',
+        title: 'Перевёрнут'
+      }],
+      audios: [{
+        value: 0,
+        title: 'Выключен'
+      },
+      {
+        value: 1,
+        title: '3.5 mm jack / Bt'
+      },
+      {
+        value: 2,
+        title: 'HDMI'
+      }],
+      orientationClasses: {
+        'standart': '',
+        'left': 'turn-left',
+        'right': 'turn-right',
+        'inverted': 'turn-over'
+      },
+      resolutions: [],
+      changed: false
+    }
+  },
+
+  methods: {
+    checkInput: function() {
+      return this.monitor.name.length > 0
+        && !isNaN(Number(this.monitor.sequence))
+        && !isNaN(Number(this.monitor.sync_group));
+    },
+
+    showSubmit: function() {
+      this.changed = this.checkInput();
+    },
+
+    submitChanges: function() {
+      if (this.checkUnsaved()) {
+        this.saveDisplay();
+      } else {
+        this.updateDisplay();
+      }
+    },
+
+    getDisplayData: function() {
+      return {
+        music_box: false,
+        video_wall: false,
+        host_id: this.monitor.host,
+        host_slot: this.monitor.host_slot,
+        name: this.monitor.name,
+        nuc_mon: this.monitor.nuc_mon,
+        orientation: this.monitor.orientation,
+        resolution: this.monitor.resolution,
+        sequence: this.monitor.sequence,
+        sync_group: this.monitor.sync_group,
+        pixels: [],
+        audio_output: this.monitor.audio_output
+      }
+    },
+
+    saveDisplay: function() {
+      axios.post(
+        'monitor/',
+        this.getDisplayData()
+      ).then(response => {
+        this.monitor.id = response.data.id;
+        messageSuccess('Монитор успешно сохранён');
+        this.changed = false;
+      }).catch(error => handleError(
+        error,
+        'Не удалось сохранить монитор'
+      ));
+    },
+
+    updateDisplay: function() {
+      axios.put(
+        `monitor/${this.monitor.id}`,
+        this.getDisplayData()
+      ).then(response => {
+        messageSuccess('Изменения успешно применены');
+        this.changed = false;
+      }).catch(error => handleError(
+        error,
+        'Не удалось применить изменения'
+      ));
+    },
+
+    checkUnsaved: function() {
+      return this.monitor.id === undefined;
+    },
+
+    deleteLocal: function() {
+      this.$emit('delete');
+      this.$destroy();
+    },
+
+    deleteSelf: function() {
+      if (this.checkUnsaved()) {
+        this.deleteLocal();
+        return;
+      }
+
+      if (!confirm('Вы уверены, что хотите удалить устройство?')) {
+        return;
+      }
+
+      axios.delete(
+        `monitor/${this.monitor.id}`
+      ).then(response => {
+        messageSuccess('Монитор успешно удалён');
+        this.deleteLocal();
+      }).catch(error => handleError(
+        error,
+        'Не удалось удалить монитор'
+      ));
+    },
+
+    pullDefinitions: function() {
+      const request = `host=${this.monitor.host}`
+        + `&slot=${this.monitor.host_slot}`;
+      axios.post(
+        '/mon_res_list/',
+        request
+      ).then(response => {
+        if (response.data != null) {
+          this.resolutions = response.data;
+        }
+      }).catch(error => handleError(error));
+    }
+  },
+
+  mounted: function() {
+    // Костыль для Vue
+    this.monitor.host_slot = !this.monitor.nuc_mon
+      ? 0
+      : this.monitor.host_slot;
+    this.pullDefinitions();
+  }
+});
+</script>

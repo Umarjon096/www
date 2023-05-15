@@ -1,0 +1,266 @@
+<script type="text/x-template" id="schedule-settings-template">
+<div class="pt-4 pl-2 pr-4 pb-4">
+  <h1 class="mb-4 pb-4">Режим работы</h1>
+  <div
+    class="top-loader"
+    v-if="syncing"
+  >
+    <div>Идёт загрузка...</div>
+    <div class="lds-facebook">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+  <div class="row mb-5">
+    <div
+      class="col-6"
+      :class="{'under-load': loading}"
+    >
+      <div class="days days--big">
+        <div
+          v-for="day in week"
+          :key="day.name"
+          v-show="day.active"
+          class="day"
+        >
+          <div class="day__title">[[day.name]]</div>
+          <div class="day__time">
+            <input
+              type="time"
+              class="form-control"
+              v-model.trim="day.from"
+              @input="triggerChanges"
+            >
+            <div class="pr-3 pl-3">—</div>
+            <input
+              type="time"
+              class="form-control"
+              v-model.trim="day.to"
+              @input="triggerChanges"
+            >
+          </div>
+          <div
+            class="day__del"
+            @click="removeDay(day.value)"
+          >
+            <i
+              class="icon icon--del"
+              v-if="day.value > 0"
+            >
+              {% include 'svg/times.svg' %}
+            </i>
+            <i
+              class="icon icon--del"
+              v-else
+              v-show="day.from || day.to"
+            >
+              {% include 'svg/trash.svg' %}
+            </i>
+          </div>
+        </div>
+      </div>
+      <div class="days-btns">
+        <select
+          class="custom-select"
+          name="days"
+          v-model="currentDay"
+        >
+          <option
+            v-for="day in week"
+            v-if="day.value > 0"
+            :value="day.value"
+            :disabled="day.active"
+          >[[day.name]]</option>
+        </select>
+        <span
+          class="btn btn-outline-secondary btn-lg btn--fixed"
+          @click="addDay"
+        >Добавить</span>
+      </div>
+    </div>
+  </div>
+  <div class="form-group">
+    <a
+      href="#"
+      class="btn btn-primary btn-lg btn--fixed mr-2"
+      v-show="changed"
+      @click="submitChanges"
+    >Сохранить</a>
+  </div>
+</div>
+</script>
+
+<script>
+const Schedule = Vue.extend({
+  template: '#schedule-settings-template',
+  delimiters: ['[[', ']]'],
+
+  data() {
+    return {
+      changed: false,
+      loading: false,
+      syncing: true,
+      currentDay: 1,
+      week: [
+        {
+          name: 'Все дни',
+          str: 'Все',
+          value: 0,
+          active: true,
+          from: '',
+          to: ''
+        },
+        {
+          name: 'Понедельник',
+          str: 'Пн',
+          value: 1,
+          active: false,
+          from: '',
+          to: ''
+        },
+        {
+          name: 'Вторник',
+          str: 'Вт',
+          value: 2,
+          active: false,
+          from: '',
+          to: ''
+        },
+        {
+          name: 'Среда',
+          str: 'Ср',
+          value: 3,
+          active: false,
+          from: '',
+          to: ''
+        },
+        {
+          name: 'Четверг',
+          str: 'Чт',
+          value: 4,
+          active: false,
+          from: '',
+          to: ''
+        },
+        {
+          name: 'Пятница',
+          str: 'Пт',
+          value: 5,
+          active: false,
+          from: '',
+          to: ''
+        },
+        {
+          name: 'Суббота',
+          str: 'Сб',
+          value: 6,
+          active: false,
+          from: '',
+          to: ''
+        },
+        {
+          name: 'Воскресенье',
+          str: 'Вс',
+          value: 7,
+          active: false,
+          from: '',
+          to: ''
+        }
+      ]
+    }
+  },
+
+  methods: {
+    triggerChanges: function() {
+      this.changed = this.validateFields();
+    },
+
+    validateFields: function() {
+      // Все активные дни заполнены или пусты
+      return this.week
+        .filter(day => day.active)
+        .every(day => day.from.length == day.to.length);
+    },
+
+    addDay: function() {
+      this.week[this.currentDay].active = true;
+      this.triggerChanges();
+    },
+
+    removeDay: function(day) {
+      this.week[day].from = '';
+      this.week[day].to = '';
+      if (day != 0) {
+        this.week[day].active = false;
+      }
+      this.triggerChanges();
+    },
+
+    checkCommon: function() {
+      // "Все дни" заполнены
+      const common = this.week[0].from.length > 0 && this.week[0].to.length > 0;
+
+      // Хотя бы один день недели заполнен и активен
+      const other = this.week
+        .filter(day => day.value > 0 && day.active)
+        .some(day => day.from.length > 0 && day.to.length > 0);
+
+      return common && other;
+    },
+
+    makeRequestData: function() {
+      // Превращаем активные и заполненные дни в нужные объекты
+      return this.week
+        .filter(day => day.active && day.from.length > 0 && day.to.length > 0)
+        .map(day => ({
+          day_of_week: day.value,
+          day_of_week_str: day.str,
+          time_begin: day.to,
+          time_end: day.from
+        }));
+    },
+
+    submitChanges: function() {
+      if (this.checkCommon()) {
+        alert('Установлен общий интервал. Пожалуйста, очистите дневные интервалы');
+        return;
+      }
+
+      this.changed = false;
+      this.loading = true;
+
+      axios.post(
+        'boschedule/',
+        this.makeRequestData()
+      ).then(response => {
+        messageSuccess('Настройки отключения применены');
+        this.loading = false;
+      }).catch(error => handleError(
+        error,
+        'Не удалось применить изменения',
+        (() => {
+          this.loading = false;
+        })
+      ));
+    }
+  },
+
+  mounted: function() {
+    axios.get('boschedule/').then(response => {
+      response.data.forEach(day => {
+        const current = this.week[day.day_of_week];
+        current.from = day.time_end;
+        current.to = day.time_begin;
+        current.active = true;
+      });
+    }).catch(error => handleError(
+      error,
+      'Ошибка! В случае повторения обратитесь в техподдержку.'
+    )).then(() => {
+      this.syncing = false;
+    });
+  }
+});
+new Schedule().$mount('#schedule');
+</script>

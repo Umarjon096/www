@@ -1,0 +1,46 @@
+{% extends "admin/base.html" %}
+{% load staticfiles %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+<svg><polygon points="0,0 0,95 410,100 280,0" fill="#fff"/></svg>
+<div class="users_logo">
+<a href="/"><img src="{% static 'mc/img/user_logo.png' %}" alt="Logo"/></a>
+</div>
+<img class="optio_logo" src="{% static 'mc/img/opteo_logo.png' %}" alt="optio"/>
+<div class="date" id="cur_date"></div>
+<!-- <a href="{% url 'logout' %}"><div class="logout" id="logout">Выйти из системы</div></a> -->
+<div class="gradient_line"></div>
+<h1 id="site-name">
+<a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a></h1>
+<script src="{% static 'mc/js/lib/jquery-1.11.0.js' %}"></script>
+<script src="{% static 'mc/js/lib/moment.js' %}"></script>
+    <script>
+        (function (){
+            var selected_date;
+            var ticker;
+            var t;
+            function getSrvTime () {
+                $.ajax({
+                    type: "POST",
+                    url: "/get_time/",
+                    success: function (data) {
+                        var obj_data = JSON.parse(data);
+                        clearInterval(ticker);
+                        selected_date = new Date(obj_data.time);
+                        ticker = setInterval(function () {
+                            selected_date.setSeconds(selected_date.getSeconds() + 1);
+                            var time_wrapper = moment(selected_date).tz(obj_data.tz);
+                            document.getElementById('cur_date').innerHTML = time_wrapper.format("DD.MM.YYYY HH:mm:ss (Z)");
+                        }, 60000);
+                    }
+                });
+             t = setTimeout(function(){ getSrvTime() }, 30000);
+            };
+            getSrvTime();
+        })();
+    </script>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+

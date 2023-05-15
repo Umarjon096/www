@@ -1,0 +1,15 @@
+Django>=1.7,<1.8
+django-jfu
+ecdsa
+lorem-ipsum-generator
+numpy
+paramiko==1.15.2
+pycrypto==2.6.1
+pytz
+requests
+scp
+six
+transliterate
+wifi
+Pillow
+opencv-python

@@ -1,0 +1,13 @@
+﻿<head>
+<link rel="stylesheet" type="text/css" href="/static/mc/css/key.css"/>	
+</head>
+<body>
+	<div class="license">Недействительный лицензионный ключ</div>
+	<form name="key_form" method="post" action="">
+    {% csrf_token %}
+	<div><input id="new_key" name="new_key" type="text" placeholder="Введите полученный ключ"/>
+	<input type="submit" value="Активировать"></div>
+	</form>
+	<div>Для получения ключа, отправьте администратору этот код:</div>
+	<div class="uuid">{{ uuid }}</div>
+</body>

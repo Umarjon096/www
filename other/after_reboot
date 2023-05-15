@@ -1,0 +1,19 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:          reboot
+# Required-Start:    $all
+# Required-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:      1 0 6
+# Short-Description: marks .reboot file if rebooted properly
+### END INIT INFO
+
+
+REBOOT_FILE=/var/www/.reboot
+
+if [ -s $REBOOT_FILE ]; then
+    truncate -s 0 $REBOOT_FILE
+else
+    rm -f $REBOOT_FILE
+fi

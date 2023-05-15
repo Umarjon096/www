@@ -1,0 +1,57 @@
+﻿{% extends "admin/blank_breadcrumbs.html" %}
+{% load staticfiles %}
+{% block content %}
+<script src="{% static 'mc/js/lib/jquery-1.11.0.js' %}"></script>
+	<div class="patch_upload" >Ручная загрузка обновления</div>
+    {% if not is_updating %}
+	<form id="patch_form" name="patch_form" method="post" action="">
+	<div><input class="file_upload" id="new_patch" name="new_patch" type="file" /><br>
+        <progress max="100" value="0"></progress>
+	<input type="submit" name="patch_btn" value="Применить"></div>
+	</form>
+    {% else %}
+        <div>В данный момент идет установка обновления, дождитесь окончания (~2 мин) и перезагрузите страницу</div>
+    {% endif %}
+
+<script type="text/javascript">
+    function progressHandlingFunction(e) {
+        if (e.lengthComputable) {
+            $('progress').show();
+            $('progress').attr({value: e.loaded, max: e.total});
+        }
+    };
+
+    $("#patch_form").submit(function () {
+        var url = "/patch_upload/"; // the script where you handle the form input.
+
+        var formData = new FormData($('#patch_form')[0]);
+        var files = ($('#new_patch'))[0];
+
+        var f_len = files.files.length;
+        $.ajax({
+            type: "POST",
+            url: url,
+            xhr: function () {  // Custom XMLHttpRequest
+                var myXhr = $.ajaxSettings.xhr();
+                if (myXhr.upload) { // Check if upload property exists
+                    myXhr.upload.addEventListener('progress', function (e) {
+                        progressHandlingFunction(e);
+                    }, false);
+                }
+                return myXhr;
+            },
+            data: formData, // serializes the form's elements.
+            cache: false,
+            contentType: false,
+            processData: false,
+            success: function (data) {
+                console.log(data); // show response from the php script.
+                location.reload();
+            }
+        });
+
+        return false; // avoid to execute the actual submit of the form.
+    });
+
+</script>
+{% endblock %}

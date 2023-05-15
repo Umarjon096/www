@@ -1,0 +1,420 @@
+<script type="text/x-template" id="radio-settings-template">
+<div class="pt-4 pl-2 pr-4 pb-4">
+  <h1 class="mb-4 pb-4">Настройки аудиостриминга</h1>
+  <div
+    class="top-loader"
+    v-if="loading"
+  >
+    <div>Идёт загрузка...</div>
+    <div class="lds-facebook">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-5">
+      <div class="row align-items-center">
+        <div
+          class="form-group"
+          :class="formWidth"
+        >
+          <label class="col-form-label">Размер буффера при проигрывании аудио, сек</label>
+          <input
+            type="number"
+            step="0.1"
+            min="0"
+            max="60"
+            pattern="^\d{1,2}(\.\d{0,1})?$"
+            class="form-control"
+            v-model.number="bufferTime"
+            @input="showBufferButton"
+          >
+        </div>
+        <div
+          class="col-4"
+          v-show="newBuffer"
+        >
+          <a
+            href="#"
+            class="btn btn-secondary"
+            @click="changeBufferTime"
+          >Изменить размер буффера</a>
+        </div>
+      </div>
+      <div class="form-group center-buttons">
+        <a
+          href="#"
+          class="btn btn-primary btn-lg btn--fixed mr-2"
+          v-show="stations.length > 0"
+          @click="toggleAll"
+        >[[stations.every(station => station.checked)
+            ? 'Снять выделение'
+            : 'Выделить все'
+          ]]</a>
+      </div>
+      <div
+        class="row col-12 mb-2 radio-element"
+        v-for="station in stations"
+        :key="station.key"
+        :title="station.url"
+      >
+        <label class="custom-control custom-checkbox center-checkbox col-1">
+          <input
+            type="checkbox"
+            class="custom-control-input"
+            v-model="station.checked"
+            @change="showDelete"
+          >
+          <span class="custom-control-label"></span>
+        </label>
+        <div
+          class="col-9 pointer"
+          @click="changeStation(station)"
+        >
+          [[station.name]]
+        </div>
+        <div
+          class="col-1 radio-del"
+          @click="deleteOne(station)"
+        >
+          <i class="icon icon--del">
+            {% include 'svg/trash.svg' %}
+          </i>
+        </div>
+      </div>
+      <div
+        v-if="stations.length == 0"
+      >
+        Список радиостанций пуст
+      </div>
+      <div class="form-group">
+        <label class="col-form-label">Файл радиостанций</label>
+        <div class="row align-items-center">
+          <div class="col-4">
+            <a href="/export_radio/" class="btn btn-secondary">Скачать список радиостанций</a>
+          </div>
+          <div class="col-6">
+            <div
+              class="custom-file"
+              :class="{'under-load': file.upload}"
+            >
+              <input
+                type="file"
+                accept=".csv,.json"
+                class="custom-file-input"
+                id="radioFile"
+                @input="uploadRadios"
+              >
+              <label class="custom-file-label text-truncate" for="radioFile">Загрузить файл</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6">
+      <div
+        class="form-group"
+        v-if="deleteReady"
+      >
+        <a
+          href="#"
+          class="btn btn-outline-danger btn-lg btn--fixed mr-2"
+          @click="deleteMultiple"
+        >Удалить выделенные</a>
+      </div>
+      <div
+        v-else
+      >
+        <div class="form-group">
+          <label class="col-form-label">Название радио</label>
+          <input
+            type="text"
+            class="form-control"
+            v-model.trim="name"
+            @input="showSubmit"
+          >
+        </div>
+        <div class="form-group">
+          <label class="col-form-label">URL радио</label>
+          <input
+            type="text"
+            class="form-control"
+            v-model.trim="url"
+            @input="showSubmit"
+          >
+        </div>
+        <div class="form-group">
+          <a
+            href="#"
+            class="btn btn-primary btn-lg btn--fixed mr-2"
+            v-show="changed"
+            @click="saveStation"
+          >Сохранить</a>
+          <a
+            href="#"
+            class="btn btn-primary btn-lg btn--fixed mr-2"
+            v-show="forChange"
+            @click="submitChanges"
+          >Сохранить изменения</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</script>
+
+<script>
+const Radio = Vue.extend({
+  template: '#radio-settings-template',
+  delimiters: ['[[', ']]'],
+
+  data() {
+    return {
+      stations: [],
+      deleteReady: false,
+      name: '',
+      url: '',
+      forChange: '',
+      bufferTime: 0,
+      newBuffer: false,
+      changed: false,
+      file: {
+        upload: false
+      },
+      loading: true
+    }
+  },
+
+  computed: {
+    formWidth: function() {
+      return this.newBuffer ? 'col-8': 'col-12';
+    }
+  },
+
+  methods: {
+    pullData: function() {
+      this.stations = [];
+      this.deleteReady = false;
+      this.changed = false;
+      this.name = '';
+      this.url = '';
+      this.forChange = '';
+
+      axios.get(
+        '/saved_url/'
+      ).then(response => {
+        response.data.filter(station => !station.video).forEach(station => {
+          this.stations.push(this.newStation(
+            station.id,
+            station.name,
+            station.url
+          ));
+        });
+      }).catch(error => handleError(
+        error,
+        'Ошибка! В случае повторения обратитесь в техподдержку.'
+      )).then(() => {
+        this.loading = false;
+      });
+
+      axios.get(
+        'setting/9'
+      ).then(response => {
+        this.bufferTime = parseFloat(response.data[0].value);
+      }).catch(error => handleError(
+        error,
+        'Не удалось получить значение буфферизации'
+      ));
+    },
+
+    showBufferButton: function() {
+      this.newBuffer = true;
+    },
+
+    toggleAll: function() {
+      const status = !this.stations.every(station => station.checked);
+
+      this.stations.forEach(station => {
+        station.checked = status;
+      });
+
+      this.showDelete();
+    },
+
+    changeStation: function(station) {
+      this.forChange = station.key;
+      this.name = station.name;
+      this.url = station.url;
+    },
+
+    submitChanges: function() {
+      axios.put(
+        `/saved_url/${this.forChange}`,
+        {
+          name: this.name,
+          url: this.url,
+          video: false
+        }
+      ).then(response => {
+        messageSuccess('Изменения сохранены');
+        this.pullData()
+      }).catch(error => handleError(
+        error,
+        'Не удалось применить изменения'
+      ));
+    },
+
+    changeBufferTime: function() {
+      this.newBuffer = false;
+
+      axios.put(
+        'setting/9',
+        {
+          value: this.bufferTime
+        }
+      ).then(response => {
+        messageSuccess('Размер буффера успешно изменён');
+      }).catch(error => handleError(
+        error,
+        'Не удалось изменить размер буффера'
+      ));
+    },
+
+    newStation: function(key, name, url) {
+      return {
+        key: key,
+        name: name,
+        url: url,
+        checked: false
+      }
+    },
+
+    showDelete: function() {
+      // Хотя бы одна станция отмечена
+      this.deleteReady = this.stations.some(station => station.checked);
+
+      this.name = '';
+      this.url = '';
+      this.forChange = '';
+    },
+
+    isUrl: function() {
+      const a = document.createElement('a');
+      a.href = this.url;
+      return a.host && a.host != window.location.host;
+    },
+
+    validateNewRadio: function() {
+      return this.forChange.length == 0
+        && this.name.length > 0
+        && this.url.length > 0
+        && this.isUrl();
+    },
+
+    showSubmit: function() {
+      this.changed = this.validateNewRadio();
+    },
+
+    saveStation: function() {
+      axios.post(
+        '/saved_url/',
+        {
+          name: this.name,
+          url: this.url,
+          video: false
+        }
+      ).then(response => {
+        messageSuccess('Станция успешно сохранена');
+        this.pullData();
+      }).catch(error => handleError(
+        error,
+        'Не удалось сохранить станцию'
+      ));
+    },
+
+    deleteOne: function(station) {
+      if (!confirm('Вы уверены, что хотите удалить радиостанцию?')) {
+        return;
+      }
+
+      axios.delete(
+        `/saved_url/${station.key}`
+      ).then(response => {
+        messageSuccess('Станция успешно удалена');
+        this.pullData();
+      }).catch(error => handleError(
+        error,
+        'Не удалось удалить станцию'
+      ));
+    },
+
+    deleteMultiple: function() {
+      const forDeletion = this.stations
+        .filter(station => station.checked)
+        .map(station => station.key);
+
+      if (!confirm(`Вы уверены, что хотите удалить ${forDeletion.length} станций?`)) {
+        return;
+      }
+
+      axios.post(
+        '/saved_url/',
+        {
+          'delete_list': forDeletion
+        }
+      ).then(response => {
+        messageSuccess('Станции успешно удалены');
+        this.pullData();
+      }).catch(error => handleError(
+        error,
+        'Не удалось удалить станции'
+      ));
+    },
+
+    isCsv: function(text) {
+      // TODO реализовать проверку
+      return true;
+    },
+
+    uploadRadios: async function() {
+      const file = ($('#radioFile'))[0].files[0];
+      const text = await new Response(file).text();
+      if (file.type !== 'text/csv' && file.type !== 'application/json') {
+        alert('Некорректный тип файла');
+        return;
+      }
+
+      if (!this.isCsv(text)) {
+        alert('Некорректный формат данных');
+        return;
+      }
+
+      this.file.upload = true;
+      axios.post(
+        '/import_radio/',
+        text
+      ).then(response => {
+        this.file.upload = false;
+        if (response.data.status == 'success') {
+          messageSuccess('Потоки успешно загружены');
+          this.pullData();
+        } else {
+          messageError(response.data.msg);
+        }
+      }).catch(error => handleError(
+        error,
+        'Не удалось загрузить потоки',
+        (() => {
+          this.file.upload = false;
+        })
+      ));
+    }
+  },
+
+  mounted: function() {
+    this.pullData();
+  }
+});
+new Radio().$mount('#radio');
+</script>

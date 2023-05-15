@@ -1,0 +1,82 @@
+﻿{% extends "admin/blank_breadcrumbs.html" %}
+{% load staticfiles %}
+{% block content %}
+<script src="{% static 'mc/js/lib/jquery-1.11.0.js' %}"></script>
+	<div class="logo_upload">Загрузка логотипа</div>
+	<form id="logo_form" name="logo_form" method="post" action="">
+	<div><input class="file_upload" id="new_logo" name="new_logo" type="file" />
+        <progress max="100" value="0"></progress>
+	<input type="submit" name="patch_btn" value="Применить"></div>
+	</form>
+    <input type="submit" id="delete_btn" name="delete_btn" value="Удалить текущий логотип"></div>
+<script type="text/javascript">
+    function progressHandlingFunction(e) {
+        if (e.lengthComputable) {
+            $('progress').show();
+            $('progress').attr({value: e.loaded, max: e.total});
+        }
+    };
+
+    $("#logo_form").submit(function () {
+        var url = "/logo_upload/"; // the script where you handle the form input.
+
+        var formData = new FormData($('#logo_form')[0]);
+        var files = ($('#new_logo'))[0];
+
+        var f_obj = files.files[0];
+        var f_type = f_obj.type;
+        var regexp = /^\w*/g;
+        var type = (regexp.exec(f_type))[0];
+        if (type != 'image')
+        {
+            alert('Файл не является изображением');
+            return false;
+        }
+        var size = f_obj.size;
+        if (size > 5000000){
+            alert('Максимальный размер файла логотипа: 5Мб');
+            return false;
+        }
+
+        $.ajax({
+            type: "POST",
+            url: url,
+            xhr: function () {  // Custom XMLHttpRequest
+                var myXhr = $.ajaxSettings.xhr();
+                if (myXhr.upload) { // Check if upload property exists
+                    myXhr.upload.addEventListener('progress', function (e) {
+                        progressHandlingFunction(e);
+                    }, false);
+                }
+                return myXhr;
+            },
+            data: formData, // serializes the form's elements.
+            cache: false,
+            contentType: false,
+            processData: false,
+            success: function (data) {
+                console.log(data); // show response from the php script.
+                alert('Логотип установлен');
+            }
+        });
+
+        return false; // avoid to execute the actual submit of the form.
+    });
+
+$('#delete_btn').click(function(){
+    var url = "/logo_upload/";
+    $.ajax({
+            type: "DELETE",
+            url: url,
+            cache: false,
+            contentType: false,
+            processData: false,
+            success: function (data) {
+                console.log(data); // show response from the php script.
+                alert('Логотип удален');
+            }
+        });
+});
+
+</script>
+{% endblock %}

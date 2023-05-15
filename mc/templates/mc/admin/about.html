@@ -1,0 +1,92 @@
+<script type="text/x-template" id="about-block-template">
+<div>
+  <h1 class="mb-4 pb-4">Об устройстве</h1>
+  <h2>Поддерживаемые форматы</h2>
+  <h3>Аудио</h3>
+  <ul class="mb-4">
+    <li>Mp3</li>
+    <li>Flac</li>
+    <li>Aac</li>
+    <li>Ogg</li>
+    <li>Wav</li>
+    <li>Mpa</li>
+  </ul>
+  <h3>Видео</h3>
+  <ul class="mb-4">
+     <li>Mp4</li>
+     <li>Ogg</li>
+     <li>WebM</li>
+  </ul>
+  <h3>Изображения</h3>
+  <ul class="mb-4">
+    <li>Bmp</li>
+    <li>Gif</li>
+    <li>Jpg</li>
+    <li>Png</li>
+  </ul>
+  <!--h3>Протоколы</h3>
+  <ul class="mb-4">
+    <li>FTP</li>
+    <li>Gopher</li>
+    <li>HLS</li>
+    <li>HTTP</li>
+    <li>HTTPS</li>
+    <li>RTP</li>
+    <li>RTSP</li>
+    <li>SCTP</li>
+    <li>SDP</li>
+    <li>SRTP</li>
+    <li>TCP</li>
+    <li>TLS</li>
+    <li>UDP</li>
+    <li>UDP-Lite</li>
+  </ul-->
+  <div class="pl-2 pr-4 pb-4">
+    <div class="about pb-3">Версия ПО: [[version]]</div>
+    <div class="about pb-3">UUID устройства: [[uuid]]</div>
+    <div class="about pb-3">Версия ядра: [[kernel]]</div>
+    <div class="about pb-3">Модель устройства: [[device]]</div>
+    <div class="about pb-3">Файловая система: [[filesystem]]</div>
+  </div>
+</div>
+</script>
+
+<script>
+const About = Vue.extend({
+  template: '#about-block-template',
+  delimiters: ['[[', ']]'],
+
+  data() {
+    return {
+      version: 'Неизвестно',
+      uuid: 'Неизвестно',
+      kernel: 'Неизвестно',
+      device: 'Неизвестно',
+      filesystem: 'Неизвестно'
+    }
+  },
+
+  methods: {
+    pullData: function() {
+      axios.get(
+        'about/'
+      ).then(response => {
+        this.version = response.data.version;
+        this.uuid = response.data.uuid;
+        this.kernel = response.data.kernel;
+        this.device = response.data.device;
+        this.filesystem = response.data.fs;
+
+      }).catch(error => handleError(
+        error,
+        'Ошибка! Не удалось получить информацию об устройстве.'
+      ));
+    }
+  },
+
+  mounted: function() {
+    this.pullData();
+  }
+});
+new About().$mount('#about');
+</script>

@@ -1,0 +1,114 @@
+#datetime_form {
+	height: 58px;
+}
+
+.date_current {
+	float: left;
+	font-weight: bold;
+	width: calc(100% - 180px);
+	margin-left: 8px;
+	margin-right: 8px;
+}
+
+.date_current input {
+	height: 26px;
+	line-height: 26px;
+	font-family: inherit;
+	width: calc(100% - 8px);
+	font-size: 15px;
+	margin-top: 8px;
+}
+
+p {
+	font-family: inherit;
+	font-size: x-small;
+	font-weight: bold;
+}
+
+.date_apply {
+	width: 144px;
+	height: 30px;
+	font-size: 15px;
+	text-align: center;
+	font-family: inherit;
+	color: white;
+	background-color: #007EB5;
+	border: none;
+	border-radius: 2px;
+	margin-top: 9px;
+}
+
+.date_apply:hover {
+	background-color: #02405C;
+	cursor: pointer;
+}
+
+.date_tz {
+	height: 58px;
+}
+
+.date_widget {
+	width: calc(100% - 224px);
+	float: left;
+}
+
+.date_widget p {
+	margin-left: 8px;
+}
+
+.date_tz select {
+	height: 32px;
+	border-radius: none;
+	border: 1px solid rgb(204, 204, 204);
+	margin-left: 8px;
+	font-family: inherit;
+	font-size: 15px;
+	margin-right: 8px;
+	width: calc(100% - 18px);
+	margin-top: 8px;
+}
+
+.date_tz input {
+	width: 204px;
+	height: 30px;
+	font-family: inherit;
+	border-radius: 2px;
+	font-size: 15px;
+	background-color: #007EB5;
+	color: white;
+	border: none;
+	margin-top: 9px;
+}
+
+.date_tz input:hover {
+	background-color: #02405C;
+	cursor: pointer;
+}
+
+#ntp_form input{
+	width: 254px;
+	height: 30px;
+	font-family: inherit;
+	border-radius: 2px;
+	font-size: 15px;
+	background-color: #007EB5;
+	color: white;
+	border: none;
+	margin-top: 8px;
+	margin-left: 8px;
+}
+
+#ntp_form input:hover {
+	background-color: #02405C;
+	cursor: pointer;
+}
+
+#loading_div_ntp {
+	margin-left: 8px;
+	margin-top: 8px;
+}
+
+#ntp_status {
+	margin-left: 8px;
+	margin-top: 8px;
+}

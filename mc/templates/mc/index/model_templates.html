@@ -1,0 +1,298 @@
+<!-- ==================== ШАБЛОНЫ ==================-->
+<!-- Файл -->
+<script type="text/template" id="file-template">
+  <div class="playlist-item ui-sortable-handle <%= (bitrate_violation|wrong_orientation) ? 'bitrate_violation': '' %>
+     <%= (loading) ? 'playlist-item--loading': '' %>"
+     <% if (bitrate_violation) { %>
+      title="Превышение допустимого битрейта! > 15000 кбит/сек"
+      <% } %>
+      <% if (wrong_orientation) { %>
+        title="Ошибочная ориентация картинки!"
+        <% } %>
+
+     >
+     
+    <% if (type === 'audio') { %>
+      <div class="playlist-item__type">
+        <i class="icon icon--music">
+          {% include 'svg/music.svg' %}
+        </i>
+      </div>
+    <% } else if (type === 'url') { %>
+      <div class="playlist-item__type">
+        <i class="icon icon--radio">
+          {% include 'svg/radio.svg' %}
+        </i>
+      </div>
+    <% } else if (thumb_url.length > 0 && (type === 'image' || type === 'video')) { %>
+      <div class="playlist-item__img">
+        <img src="<%= thumb_url %>">
+      </div>
+    <% } else { %>
+      <div class="playlist-item__type">
+        <i class="icon icon--pic">
+          {% include 'svg/img.svg' %}
+        </i>
+      </div>
+    <% } %>
+    <div class="playlist-item__name"><%= name %></div>
+    <% if (type === 'image' || type === 'video') { %>
+      <a href="<%= file_url %>" data-fancybox="" class="playlist-item__eye" title="Во весь экран">
+        <i class="icon icon--eye">
+          {% include 'svg/eye.svg' %}
+        </i>
+      </a>
+    <% } %>
+    <div class="playlist-item__del del" title="Удалить">
+      <i class="icon icon--trash">
+        {% include 'svg/trash.svg' %}
+      </i>
+    </div>
+    <div class="playlist-item__move" title="Переместить элемент">
+      <i class="icon icon-arrow-up up">
+        {% include 'svg/arrow-right.svg' %}
+      </i>
+      <span></span>
+      <span></span>
+      <i class="icon icon-arrow-down down">
+        {% include 'svg/arrow-right.svg' %}
+      </i>
+    </div>
+    <div class="playlist-item__progress">
+      <progress class="space upload_progress" max="100"></progress>
+    </div>
+  </div>
+</script>
+
+<!-- Плейлист -->
+<script type="text/template" id="playlist-template">
+  <div class="playlist">
+    <div class="disabler"></div>
+    <div class="playlist__top">
+      <div class="playlist__name">Плейлист <%= sequence %></div>
+      <div class="playlist__del del">
+        Удалить
+        <i class="icon icon--trash">
+          {% include 'svg/trash.svg' %}
+        </i>
+      </div>
+    </div>
+    <div class="playlist-items sort ui-sortable"></div>
+    <div class="playlist__choose">
+      <div class="upload dropzone dz-clickable">
+        <div class="dz-default dz-message">
+          <span>
+            <span class="text-white">+ выберите </span>
+            или перетащите файл
+          </span>
+        </div>
+      </div>
+    <% if (content_type === 'audio') { %>
+        <div class="playlist__choose-radio radioBtn">
+          <span class="btn btn-secondary btn-sm" data-toggle="modal" data-target="#radio">
+            + аудиопоток
+          </span>
+        </div>
+    <% } else { %>
+        <div class="playlist__choose-radio radioBtn">
+          <span class="btn btn-secondary btn-sm" data-toggle="modal" data-target="#url">
+            + веб-сайт
+          </span>
+        </div>
+        <!--div class="playlist__choose-radio radioBtn">
+          <span class="btn btn-secondary btn-sm" data-toggle="modal" data-target="#video">
+            + видеопоток
+          </span>
+        </div-->
+    <% } %>
+    <div class="playlist__choose-script radioBtn">
+      <span class="btn btn-secondary btn-sm" data-toggle="modal" data-target="#script">
+        + скрипт
+      </span>
+    </div>
+    </div>
+    <div class="playlist__params">
+      <% if (content_type === 'audio') { %>
+        <div class="playlist__param" title="Громкость текущего плейлиста в процентах">
+          <div class="playlist__param-title">Громкость плейлиста</div>
+          <div style="width: 77px;">
+            <input
+              type="number"
+              class="form-control form-control-sm pl_volume"
+              min="1"
+              max="100"
+              value="<%= volume %>"
+            >
+          </div>
+        </div>
+      <% } %>
+      <div
+        class="playlist__param begining_time"
+        style="display: <%= (!is_adv) ? '' : 'none' %>"
+        title="Время суток, в которые плейлист начинает проигрываться на устройстве."
+      >
+        <div class="playlist__param-title">Время начала плейлиста</div>
+        <div>
+          <input type="time" class="form-control form-control-sm time_begin" value="<%= time_begin %>"/>
+        </div>
+      </div>
+      <% if (content_type === 'hybrid') { %>
+        <div
+        class="playlist__param scale_factor_div"
+        style="display: <%= (!is_adv) ? '' : 'none' %>"
+        title="Масштаб браузера"
+      >
+        <div class="playlist__param-title">Масштаб</div>
+        <div>
+          <input type="number" class="form-control form-control-sm scale_factor" min="1" max="100" value="<%= scale_factor %>"/>
+        </div>
+      </div>
+
+      <div
+        class="playlist__param url_refresh_mode_div"
+        style="display: none"
+        title="Интервал обновления сайта"
+      >
+        <div class="playlist__param-title">Интервал обновления сайта, мин<br>(0 = авто, при потери соединения)</div>
+        <div>
+          <input type="number" class="form-control form-control-sm url_refresh_mode" min="0" max="1440" oninput="validity.valid||(value='');" value="<%= url_refresh_mode %>"/>
+        </div>
+      </div>
+      <% } %>
+      <% if (content_type === 'audio') { %>
+        <div class="playlist__param shuffle_type">
+          <div class="playlist__param-title">
+            <label class="custom-control custom-checkbox">
+              <input type="checkbox" class="custom-control-input shuffle_select" <%= (shuffle) ? 'checked' : '' %>>
+              <span class="custom-control-label">
+                Перемешать музыку
+              </span>
+            </label>
+          </div>
+        </div>
+        <div class="playlist__param">
+          <div class="playlist__param-title">
+            <label class="custom-control custom-checkbox">
+              <input type="checkbox" class="custom-control-input is_adv_select" <%= (is_adv) ? 'checked' : '' %>>
+              <span class="custom-control-label">
+                Рекламный
+              </span>
+            </label>
+          </div>
+        </div>
+        <div class="playlist__param" style="display: <%= (is_adv) ? '': 'none' %>">
+          <div class="playlist__param-title">
+            <label class="custom-control custom-checkbox">
+              <input type="checkbox" class="custom-control-input adv_at_once_select" <%= (adv_at_once) ? 'checked' : '' %>>
+              <span class="custom-control-label">
+                Проигрывать за раз
+              </span>
+            </label>
+          </div>
+        </div>
+      <% } %>
+      <div
+        class="playlist__param playlist__param--interval changing_interval"
+        style="display: <%= (content_type === 'hybrid' || is_adv) ? '': 'none' %>"
+        title="Время, в течение которого проигрывается файл<%= (!is_adv) ? ' картинки' : '' %>. После истечения интервала, файл<%= (!is_adv) ? ' картинки' : '' %> сменяется и отсчёт начинается по-новой."
+      >
+        <div class="playlist__param-title">Интервал проигрывания файлов, <%= (!is_adv) ? 'сек' : 'мин' %></div>
+        <div class="playlist__param-input">
+          <input type="text" class="form-control form-control-sm int_input" value="<%= (!is_adv) ? interval / 1000 : interval / 60000 %>">
+        </div>
+      </div>
+      <div class="playlist_type">Тип плейлиста <select class="content_type">
+        <option value="image" <%= (content_type =='image') ? 'selected="selected"' : '' %> >Картинки</option>
+        <option value="video" <%= (content_type =='video') ? 'selected="selected"' : '' %> >Видео</option>
+      </select>
+    </div>
+  </div>
+</script>
+
+<!-- Монитор -->
+<script type="text/template" id="monitor-template">
+  <div class="screen-top-fixed">
+    <div class="screen-top__name"><%= name %></div>
+      <% if (!health) { %>
+        <div class="screen-top__error">
+          <% if (health_reason === 'mon') { %>
+            Монитор не подключен!
+          <% } else { %>
+            Устройство недоступно!
+          <% } %>
+        </div>
+        <div class="screen-top__status screen-top__status--offline"></div>
+      <% } else if (!licence) { %>
+        <div class="screen-top__error">
+          Отсутствует лицензия!
+        </div>
+        <div class="screen-top__status screen-top__status--online"></div>
+      <% } else { %>
+        <div class="screen-top__status screen-top__status--online"></div>
+      <% } %>
+    </div>
+    <div class="screen-top <%= (!health || !licence) ? 'disable' : '' %> <%=
+      orientation == 'right'
+        ? 'narrow-right'
+        : orientation == 'left' ? 'narrow-left' : ''
+      %>">
+      <div class="disabler"></div>
+      <div class="screen-top__icon">
+        <% if (music_box) { %>
+          <% if (spotify) { %>
+            <i class="icon icon--audio">
+              {% include 'svg/spotify.svg' %}
+            </i>
+          <% } else { %>
+            <i class="icon icon--audio">
+              {% include 'svg/sound.svg' %}
+            </i>
+          <% } %>
+        <% } else { %>
+          <i class="icon icon--screen">
+            {% include 'svg/screen.svg' %}
+          </i>
+        <% } %>
+      </div>
+      <% if (music_box) { %>
+        <div class="screen-top__volume">
+          <div class="screen-top__song"></div>
+          <% if (!volume_locked) { %>
+            <div class="screen-top__title">Громкость</div>
+            <% if (bt) { %>
+              <input class="volume_style" type="range" min="60" max="100" value="75" id="volume" step="1"/>
+            <% } else { %>
+              <input class="volume_style" type="range" min="1" max="100" value="75" id="volume" step="1"/>
+            <% } %>
+            <input
+              type="number"
+              class="form-control form-control-sm pl_volume"
+              min="1"
+              max="100"
+              id="pl_volume"
+              value=""
+            />
+          <% } %>
+        </div>
+      <% } %>
+  </div>
+  <% if (!spotify) { %>
+    <div class="playlists mt-3 <%= (!health || !licence) ? 'disable' : '' %>"></div>
+    <div class="screen__btns <%= (!health || !licence) ? 'disable' : '' %>">
+      <div class="disabler"></div>
+      <span class="btn btn-secondary add_pl">+ Добавить плейлист</span>
+    </div>
+  <% } %>
+</script>
+
+<!-- Радио -->
+<script type="text/template" id="radio-template">
+  <div class="radio-elem__name" title="<%= url %>">
+    <%= name %>
+  </div>
+  <div class="radio-elem__del del">
+    <i class="icon icon--del">
+      {% include 'svg/trash.svg' %}
+    </i>
+  </div>
+</script>

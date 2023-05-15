@@ -1,0 +1,140 @@
+.net_hostname input {
+	height: 26px;
+	font-size: 15px;
+	font-weight: normal;
+	margin-left: 8px;
+	margin-top: 8px;
+	width: calc(50% - 32px);
+}
+
+.wifi_switch {
+	width: calc(50% - 32px);
+    margin-top: -47px;
+    margin-left: 50%;
+}
+
+.net_ip input {
+	height: 26px;
+	font-size: 15px;
+	font-weight: normal;
+	margin-left: 8px;
+	margin-top: 8px;
+	width: calc(100% - 32px);
+}
+
+.net_mask input {
+	height: 26px;
+	font-size: 15px;
+	font-weight: normal;
+	margin-left: 8px;
+	margin-top: 8px;
+	width: calc(100% - 32px);
+}
+
+.net_gw input {
+	height: 26px;
+	font-size: 15px;
+	font-weight: normal;
+	margin-left: 8px;
+	margin-top: 8px;
+	width: calc(100% - 32px);
+}
+
+.net_dns input {
+    height: 26px;
+	font-size: 15px;
+	font-weight: normal;
+	margin-left: 8px;
+	margin-top: 8px;
+	width: calc(100% - 32px);
+}
+
+p {
+	font-family: inherit;
+	font-size: x-small;
+	margin-left: 8px;
+	font-weight: bold;
+}
+
+#wnew_ssid_list {
+    margin-left: 8px;
+    width: calc(100% - 186px);
+    height: 26px;
+    font-size: 15px;
+    background-color: white;
+    margin-right: 8px;
+}
+
+.net_btn {
+	background-color: #007EB5;
+	color: white;
+	border: none;
+	width: 144px;
+	height: 30px;
+	text-align: center;
+	margin-top: 8px;
+	font-size: 15px;
+	font-family: inherit;
+	border-radius: 2px;
+}
+
+.net_btn.net_apply {
+	margin-left: 8px;
+}
+
+.net_btn:hover {
+	background-color: #02405C;
+	cursor: pointer;
+}
+
+.eth_section {
+	font-weight: bold;
+	margin-left: 8px;
+	background-color: #007EB5;
+	margin-right: 22px;
+	margin-top: 15px;
+	color: white;
+	text-align: center;
+	border-radius: 2px;
+}
+
+#wifi_status_loading img{
+	right: 26px;
+	position: absolute;
+	margin-top: -19px;
+}
+
+.eth_region, .wifi_region {
+	width: 50%;
+	float: left;
+	overflow-x: auto;
+	margin-top: 8px;
+}
+
+.net_dns {
+	padding-top: 74px;
+}
+
+.wifi_list {
+	min-height: 100px;
+	padding-left: 8px;
+}
+
+.wifi_list ul {
+	padding-top: 4px;
+	list-style-type: circle;
+}
+
+#loading_div {
+	display: none;
+}
+
+#loading_div img {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 200px;
+	height: 200px;
+	margin-left: -100px;
+	margin-top: -100px;
+}

@@ -1,0 +1,663 @@
+<script type="text/x-template" id="update-block-template">
+<div>
+  <div>[[progressMsg]]</div>
+  <progress
+    class="block space"
+    v-show="showProgress"
+    :max="maxUpdateDuration"
+    :value="updateProgress"
+  ></progress>
+  <div
+    v-if="!(error.length > 0 || hosts.length > 0)"
+  >[[leftTime]]</div>
+  <div
+    v-if="error.length > 0"
+  >[[error]]</div>
+  <div
+    v-if="hosts.length > 0"
+    v-for="host in hosts"
+    class="mb-2"
+    :class="host.ping && host.ping.state && host.ping.state == 1 ? 'online' : 'offline'"
+  >[[getHostStatus(host)]]</div>
+  <a
+    href="#"
+    class="btn btn-primary mb-2 mt-2"
+    v-if="!showProgress"
+    @click="reloadWindow"
+  >Ок</a>
+</div>
+</script>
+
+<script>
+const UpdateBlock = Vue.extend({
+  template: '#update-block-template',
+  delimiters: ['[[', ']]'],
+
+  data() {
+    return {
+      updater: null,
+      updateProgress: 0,
+      maxUpdateDuration: 600,
+      progressMsg: 'Идёт обновление, ожидайте,',
+      updateCheckDelay: 30000,
+      showProgress: true,
+      error: false,
+      hosts: []
+    }
+  },
+
+  computed: {
+    leftTime: function() {
+      return 'Осталось ' + convertToTimeString(
+        this.maxUpdateDuration - this.updateProgress
+      );
+    }
+  },
+
+  methods: {
+    reloadWindow: function() {
+      location.reload();
+    },
+
+    getHostStatus: function(host) {
+      const name = host.name.split(' ')[0];
+      const version = host.version ? host.version : 'неизвестна';
+
+      return name + ' версия: ' + version;
+    },
+
+    manageUpdateStatus: function() {
+      if (this.updateProgress >= this.maxUpdateDuration) {
+        this.showUpdateError();
+      }
+
+      axios.get(
+        'common/'
+      ).then(response => {
+        if (response.data.is_updating) {
+          setTimeout(this.manageUpdateStatus, this.updateCheckDelay);
+
+        } else {
+          this.manageRebootStatus();
+        }
+      }).catch(() => setTimeout(
+        this.manageUpdateStatus,
+        this.updateCheckDelay
+      ));
+    },
+
+    manageRebootStatus: function() {
+      // Показываем прогресс обновления
+      this.updateProgress = Math.max(this.updateProgress, 420);
+      this.progressMsg = 'Проверяю перезагрузку устройств';
+
+      checkReboot(6, this.manageDiagStatus, undefined, this.showRebootError);
+    },
+
+    manageDiagStatus: function() {
+      this.progressMsg = 'Диагностирую устройства';
+
+      axios.post(
+        '/spawn_diag/'
+      ).then(
+        () => axios.get(
+          'diag/'
+        ).then(response => {
+          if (Object.keys(response.data.data) != 0) {
+            this.hosts = response.data.data.peasants;
+          }
+
+          this.stopChecking('Обновление завершено', '');
+
+        }).catch(error => this.showDiagError(error))
+      ).catch(error => this.showDiagError(error));
+    },
+
+    showUpdateError: function() {
+      this.stopChecking(
+        'Произошла ошибка при применении обновлений',
+        'Обратитесь в службу технической поддержки'
+      );
+    },
+
+    showRebootError: function() {
+      this.stopChecking(
+        'Не удалось проверить перезагрузку устройств',
+        'Обратитесь в службу технической поддержки'
+      );
+    },
+
+    showDiagError: function(error) {
+      handleError(
+        error,
+        undefined,
+        () => this.stopChecking(
+          'Не удалось продиагностировать устройства',
+          'Обновите страницу и проверьте версию устройств на вкладке "Диагностика"'
+        )
+      );
+    },
+
+    stopChecking: function(msg, error) {
+      this.progressMsg = msg;
+      this.error = error;
+      this.showProgress = false;
+      clearInterval(this.updater);
+    }
+  },
+
+  mounted: function() {
+    this.updater = setInterval(() => this.updateProgress++, 1000);
+    setTimeout(this.manageUpdateStatus, this.updateCheckDelay);
+  }
+});
+</script>
+
+<script type="text/x-template" id="common-settings-template">
+<div class="pt-4 pl-2 pr-4 pb-4" id="form">
+  <h1 class="mb-4 pb-4">Общие настройки</h1>
+  <div
+    class="top-loader"
+    v-if="loading"
+  >
+    <div>Идёт загрузка...</div>
+    <div class="lds-facebook">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+  <h3 class="pb-3">Предприятие</h3>
+  <div class="row align-items-center">
+    <div class="col-6">
+      <div class="form-group">
+        <label class="col-form-label">Наименование предприятия</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="entName"
+          @input="processChange(changeEntName, $event)"
+        >
+      </div>
+      <div class="form-group">
+        <label class="col-form-label">Адрес места установки</label>
+        <input
+          type="text"
+          class="form-control"
+          v-model.trim="entAddress"
+          @input="processChange(changeEntAddress, $event)"
+        >
+      </div>
+    </div>
+    <div class="col-6 pl-5">
+      <div class="logo-change mr-5">
+        <div class="logo-change__img">
+          <!--TODO Отображать лого сразу же-->
+          <img
+            :src="logoUrl"
+            alt=""
+          >
+        </div>
+        <div class="logo-change__content">
+          <div class="logo-change__title">
+            Логотип предприятия (jpg, png)
+          </div>
+          <div class="logo-change__name">
+            <form
+              class="custom-file"
+              :class="{
+                'under-load': logo.upload,
+                'under-done': logo.done
+              }"
+            >
+              <input
+                type="file"
+                accept="image/jpeg,image/png"
+                class="custom-file-input"
+                name="new_logo"
+                id="logoFile"
+                @input="getFileName($event)"
+              >
+              <label class="custom-file-label text-truncate" for="logoFile">Загрузить файл</label>
+            </form>
+          </div>
+          <div class="logo-change__btns">
+            <a
+              href="#"
+              class="btn btn-secondary mr-2"
+              @click="uploadLogo"
+            >Изменить</a>
+            <a
+              href="#"
+              class="btn btn-outline-danger"
+              @click="deleteLogo"
+            >Удалить</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <h3 class="pb-3">Система</h3>
+  <div class="row">
+    <div class="col-6">
+      <div class="form-group">
+        <label class="col-form-label">Файл обновления</label>
+        <div
+          class="custom-file"
+          :class="{
+            'under-load': update.upload,
+            'under-done': update.done
+          }"
+        >
+          <input
+            type="file"
+            accept=".update"
+            class="custom-file-input"
+            id="updateFile"
+            @input="getFileName($event); processChange(uploadUpdate, $event)"
+          >
+          <label class="custom-file-label text-truncate" for="updateFile">Загрузить файл</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="col-form-label">Файл конфигурации</label>
+        <div class="row align-items-center">
+          <div class="col-4">
+            <a href="/export_conf/" class="btn btn-secondary">Скачать конфигурацию</a>
+          </div>
+          <div class="col-8">
+            <div
+              class="custom-file"
+              :class="{
+                'under-load': config.upload,
+                'under-done': config.done
+              }"
+            >
+              <input
+                type="file"
+                accept=".json"
+                class="custom-file-input"
+                id="configFile"
+                @input="getFileName($event); processChange(uploadConfig, $event)"
+              >
+              <label class="custom-file-label text-truncate" for="configFile">Загрузить файл</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="col-form-label">Время плановой перезагрузки системы</label>
+        <div class="row">
+          <div class="col-9">
+            <select
+              class="custom-select"
+              v-model="rebootDay"
+              @input="processChange(changeReboot, $event)"
+            >
+              <option value="0">-Отключено-</option>
+              <option value="-1">Ежедневно</option>
+              <option value="1">Понедельник</option>
+              <option value="2">Вторник</option>
+              <option value="3">Среда</option>
+              <option value="4">Четверг</option>
+              <option value="5">Пятница</option>
+              <option value="6">Суббота</option>
+              <option value="7">Воскресенье</option>
+            </select>
+          </div>
+          <div class="col-3">
+            <input
+              type="time"
+              class="form-control"
+              v-model.trim="rebootTime"
+              @input="processChange(changeReboot, $event)"
+              :disabled="rebootDay == 0"
+            >
+          </div>
+        </div>
+      </div>
+      <!--div class="form-group">
+        <label class="col-form-label">Длительность перехода между картинками, сек</label>
+        <input
+          type="number"
+          step="0.1"
+          min="0"
+          max="60"
+          pattern="^\d{1,2}(\.\d{0,1})?$"
+          class="form-control"
+          v-model.number="fadeTime"
+          @input="processChange(changeFadeTime, $event)"
+        >
+      </div-->
+    </div>
+  </div>
+  <div
+    class="form-group"
+    v-show="changed"
+  >
+    <a
+      href="#"
+      class="btn btn-primary btn-lg btn--fixed mr-2"
+      @click="submitChanges"
+    >Сохранить</a>
+  </div>
+</div>
+</script>
+
+<script>
+const Common = Vue.extend({
+  template: '#common-settings-template',
+  delimiters: ['[[', ']]'],
+
+  data() {
+    return {
+      isUpdating: false,
+      entName: '',
+      entAddress: '',
+      rebootDay: 0,
+      rebootTime: '00:00',
+      fadeTime: 0,
+      logoUrl: '',
+      queue: new Set(),
+      changed: false,
+      errors: false,
+      logo: {
+        upload: false,
+        done: false
+      },
+      update: {
+        upload: false,
+        done: false
+      },
+      config: {
+        upload: false,
+        done: false
+      },
+      loading: true
+    }
+  },
+
+  methods: {
+    processChange: function(func, event) {
+      const val = event.target.value;
+      if (val == '' || val == null) {
+        messageError('Недопустимое значение поля!');
+        this.pullData();
+      } else {
+        this.queue.add(func);
+        this.showSubmit();
+      }
+    },
+
+    saveChange: function(url, data) {
+      const request = axios.put(url, data);
+
+      return request.then(response => {
+        response
+      }).catch(error => handleError(
+        error,
+        undefined,
+        (() => {
+          return Promise.reject(error);
+        })
+      ));
+    },
+
+    changeEntName: function() {
+      return this.saveChange('setting/3', {value: this.entName});
+    },
+
+    changeEntAddress: function() {
+      return this.saveChange('setting/4', {value: this.entAddress});
+    },
+
+    changeReboot: function() {
+      const newReboot = this.rebootDay + ' ' + this.rebootTime;
+      return this.saveChange('setting/5', {value: newReboot});
+    },
+
+    changeFadeTime: function() {
+      return this.saveChange('setting/8', {value: this.fadeTime});
+    },
+
+    submitChanges: function() {
+      if (this.queue.has(this.uploadUpdate)) {
+        if (!confirm(
+          'Обновление устройств займет около 10 минут.'
+          + ' В течение этого времени устройства могут быть недоступны'
+          + ' и будут перезагружены. Продолжить?'
+        )) {
+          return;
+        }
+      }
+
+      const results = [];
+      for (const func of this.queue) {
+        results.push(func());
+      }
+
+      Promise.allSettled(results).then(results => {
+        if (results.every(val => val.status == 'fulfilled')) {
+          messageSuccess('Изменения успешно применены');
+        } else {
+          messageError('Произошла ошибка при применении изменений');
+        }
+      });
+      this.hideSubmit();
+      this.queue.clear();
+    },
+
+    showSubmit: function() {
+      this.changed = true;
+    },
+
+    hideSubmit: function() {
+      this.changed = false;
+    },
+
+    getFileName: function(event) {
+      // Blame bootstrap for that
+      const filename = event.target.value
+        ? event.target.value
+        : 'Загрузить файл';
+      $(event.target).next('.custom-file-label').html(filename);
+    },
+
+    uploadLogo: function() {
+      const formData = new FormData();
+      const file = ($('#logoFile'))[0].files[0];
+      if (!file) {
+        alert('Загрузите файл логотипа');
+        return;
+      }
+
+      const fileType = file.type.split("/", 1)[0];
+      if (fileType != 'image') {
+        alert('Файл не является изображением!');
+        return;
+      }
+
+      if (file.size > 5000000) {
+        alert('Размер файла логотипа не должен превышать 5Мб!');
+        return;
+      }
+
+      formData.append('new_logo', file);
+      this.logo.upload = true;
+      axios.post(
+        '/logo_upload/',
+        formData,
+        {
+          headers: {
+            'Accept': '*/*',
+            'Content-Type': 'multipart/form-data',
+          }
+        }
+      ).then(response => {
+        messageSuccess('Логотип установлен');
+        this.pullData();
+        this.logo.upload = false;
+        this.logo.done = true;
+      }).catch(error => handleError(
+        error,
+        'Не удалось установить логотип'
+        (() => {
+          this.logo.upload = false;
+        })
+      ));
+    },
+
+    deleteLogo: function() {
+      if (!confirm('Вы уверены, что хотите удалить логотип?')) {
+        return;
+      }
+
+      axios.delete(
+        '/logo_upload/'
+      ).then(response => {
+        messageSuccess('Логотип удалён');
+        this.pullData();
+      }).catch(error => handleError(error, 'Не удалось удалить логотип'));
+    },
+
+    blockScreen: function() {
+      $.blockUI({
+        blockMsgClass: 'blockMsgCustom',
+        message: '<div id="update-loader"></div>'
+      });
+
+      new UpdateBlock().$mount('#update-loader');
+    },
+
+    isUpdateType: function(filename) {
+      return filename.split('.').pop() == 'update';
+    },
+
+    uploadUpdate: function() {
+      const formData = new FormData();
+      const file = ($('#updateFile'))[0].files[0];
+
+      if (!this.isUpdateType(file.name)) {
+        alert('Некорректный тип файла');
+        return;
+      }
+
+      formData.append('new_patch', file);
+      this.update.upload = true;
+      const request = axios.post(
+        '/patch_upload/',
+        formData,
+        {
+          headers: {
+            'Accept': '*/*',
+            'Content-Type': 'multipart/form-data',
+          }
+        }
+      );
+
+      return request.then(response => {
+        this.update.upload = false;
+        this.update.done = true;
+        if (response.data.status == 'success') {
+          messageSuccess('Обновление загружено, началась установка');
+
+          this.blockScreen();
+
+        } else {
+          messageError(response.data.msg);
+        }
+        return response;
+      }).catch(error => handleError(
+        error,
+        'Не удалось загрузить файл обновлений',
+        (() => {
+          this.update.upload = false;
+          return Promise.reject(error);
+        })
+      ));
+    },
+
+    isJson: function(text) {
+      try {
+        JSON.parse(text);
+      } catch (e) {
+        return false;
+      }
+      return true;
+    },
+
+    uploadConfig: async function() {
+      const file = ($('#configFile'))[0].files[0];
+      const text = await new Response(file).text();
+      if (file.type !== 'application/json') {
+        alert('Некорректный тип файла');
+        return;
+      }
+
+      if (!this.isJson(text)) {
+        alert('Некорректный JSON');
+        return;
+      }
+
+      this.config.upload = true;
+      const request = axios.post(
+        '/import_conf/',
+        text
+      );
+
+      return request.then(response => {
+        this.config.upload = false;
+        this.config.done = true;
+
+        if (response.data.status == success) {
+          messageSuccess('Конфигурация загружена, началась установка');
+
+        } else {
+          messageError(response.data.msg);
+        }
+
+        return response;
+      }).catch(error => handleError(
+        error,
+        undefined,
+        (() => {
+          this.config.upload = false;
+          return Promise.reject(error);
+        })
+      ));
+    },
+
+    pullData: function() {
+      this.queue.clear();
+      this.hideSubmit();
+
+      return axios.get(
+        'common/'
+      ).then(response => {
+        this.isUpdating = response.data.is_updating;
+        this.entName = response.data.ent_name;
+        this.entAddress = response.data.ent_address;
+        const reboot = response.data.reboot.split(' ');
+        this.rebootDay = reboot[0];
+        this.rebootTime = reboot[1];
+        this.fadeTime = response.data.fade_time;
+        this.logoUrl = response.data.logo_url;
+      }).catch(error => handleError(
+        error,
+        'Ошибка! В случае повторения обратитесь в техподдержку.'
+      ));
+    }
+  },
+
+  async mounted() {
+    await this.pullData();
+
+    this.loading = false;
+
+    if (this.isUpdating) {
+      this.blockScreen();
+    }
+  }
+});
+new Common().$mount('#common');
+</script>

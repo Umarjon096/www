@@ -1,0 +1,243 @@
+<div class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" id="bluetooth-list">
+  <div id="bluetooth-list-mount"></div>
+</div>
+
+<script type="text/x-template" id="bluetooth-list-template">
+<div class="modal-dialog modal-sm" role="document">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h4 class="modal-title border-bottom-0">Выберите устройство</h4>
+      <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+    <div
+      class="modal-body"
+      data-dismiss="modal"
+      v-if="devices.length > 0"
+    >
+      <div
+        class="wifi-elem"
+        v-for="device in devices"
+        :key="device.uuid"
+        :title="device.uuid"
+        @click="chooseDevice(device)"
+      >[[device.name.length == 0 ? device.uuid : device.name]]</div>
+    </div>
+    <div
+      class="modal-body"
+      data-dismiss="modal"
+      v-else
+    >[[loading ? 'Идёт поиск доступных устройств': 'Нет доступных устройств']]</div>
+    <div class="modal-footer center-buttons">
+      <button
+        type="button"
+        class="btn btn-primary"
+        @click="refreshDevices"
+      >Обновить</button>
+    </div>
+  </div>
+</div>
+</script>
+
+<script>
+const BluetoothListModal = Vue.extend({
+  template: '#bluetooth-list-template',
+  delimiters: ['[[', ']]'],
+
+  data() {
+    return {
+      devices: [],
+      current: '',
+      loading: false,
+      refresh: false
+    }
+  },
+
+  methods: {
+    chooseDevice: function(device) {
+      this.current = device;
+    },
+
+    refreshDevices: function() {
+      this.refresh = !this.refresh;
+    }
+  },
+
+  mounted: function() {
+    this.$on('listSent', bluetoothList => {
+      this.devices = bluetoothList;
+      this.loading = false;
+    });
+
+    this.$on('load', () => {
+      this.devices = [];
+      this.loading = true;
+    });
+  }
+});
+</script>
+
+<script type="text/x-template" id="bluetooth-settings-template">
+<div class="pt-4 pl-2 pr-4 pb-4">
+  <h1 class="mb-4 pb-4">Bluetooth</h1>
+  <div
+    class="top-loader"
+    v-if="loading"
+  >
+    <div>Идёт загрузка...</div>
+    <div class="lds-facebook">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-6">
+      <h3
+          class="h3-sign"
+          :class="{'under-load': loading}"
+        >[[paired ? 'Подключён к ' + current : 'Нет подключения']]</h3>
+        <div class="form-group">
+          <div class="row center-buttons">
+            <a
+              href="#"
+              class="btn btn-secondary btn-lg"
+              data-toggle="modal"
+              data-target="#bluetooth-list"
+              @click="scan"
+            >Сканировать</a>
+            <a
+              href="#"
+              class="btn btn-outline-danger btn-lg"
+              v-show="paired"
+              @click="turnOff"
+            >Отключить</a>
+          </div>
+        </div>
+    </div>
+  </div>
+</div>
+</script>
+
+<script>
+const Bluetooth = Vue.extend({
+  template: '#bluetooth-settings-template',
+  delimiters: ['[[', ']]'],
+
+  data() {
+    return {
+      devices: [],
+      loading: false,
+      paired: false,
+      current: '',
+      bluetoothModal: undefined,
+      loading: true
+    }
+  },
+
+  methods: {
+    pullData: function() {
+      axios.get(
+        'bluetooth/'
+      ).then(response => {
+        this.current = response.data.bt_uuid;
+        if (this.current.length > 0) {
+          this.paired = true;
+        }
+      }).catch(error => handleError(
+        error,
+        'Ошибка! В случае повторения обратитесь в техподдержку.'
+      )).then(() => {
+        this.loading = false;
+      });
+    },
+
+    useBluetooth: function(operation, onError, onSuccess) {
+      this.loading = true;
+
+      const request = axios.post('bluetooth/', operation);
+      return request.then(response => {
+        this.loading = false;
+        if (onSuccess) {
+          messageSuccess(onSuccess);
+        }
+        return response.data;
+      }).catch(error => handleError(error, onError, (() => {
+        this.loading = false;
+        return null;
+      })));
+    },
+
+    scan: async function() {
+      if (this.loading) {
+        return;
+      }
+
+      this.bluetoothModal.$emit('load');
+      const result = await this.useBluetooth(
+        {operation: 'scan'},
+        'Не удалось получить информацию о bluetooth-устройствах'
+      );
+
+      if (result == null) {
+        this.bluetoothModal.$emit('listSent', []);
+      } else {
+        this.bluetoothModal.$emit('listSent', result.devices);
+      }
+    },
+
+    pair: async function() {
+      if (this.loading) {
+        return;
+      }
+
+      const result = await this.useBluetooth(
+        {
+          operation: 'pair',
+          uuid: this.current
+        },
+        'Не удалось подключиться к устройству',
+        'Подключился к ' + this.current
+      );
+
+      if (result != null) {
+        this.paired = true;
+      }
+    },
+
+    turnOff: async function() {
+      if (this.loading) {
+        return;
+      }
+
+      const result = await this.useBluetooth(
+        {operation: 'turn_off'},
+        'Не удалось отключиться от устройства',
+        'Отключился от всех bluetooth-устройств'
+      );
+
+      if (result != null) {
+        this.paired = false;
+        this.current = '';
+      }
+    }
+  },
+
+  mounted: function() {
+    this.pullData();
+    this.bluetoothModal = new BluetoothListModal();
+    this.bluetoothModal.$mount('#bluetooth-list-mount');
+
+    this.bluetoothModal.$watch('current', newVal => {
+      this.current = newVal.uuid;
+      this.pair();
+    });
+
+    this.bluetoothModal.$watch('refresh', () => {
+      this.scan();
+    });
+  }
+});
+new Bluetooth().$mount('#bluetooth');
+</script>
